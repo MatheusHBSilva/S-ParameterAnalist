@@ -6,6 +6,8 @@
   <title>S1P / S2P Signal Analyzer</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <!-- SheetJS para download em Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   
   <style>
     :root {
@@ -97,8 +99,6 @@
       cursor: pointer;
       z-index: 10;
     }
-
-    .drop-zone-content { pointer-events: none; z-index: 1; }
 
     .file-row {
       display: flex;
@@ -335,6 +335,7 @@
             </select>
             <button class="dl-btn" onclick="downloadTableCSV('data-table','table-title-main')">CSV</button>
             <button class="dl-btn" onclick="downloadTableJPG('data-table','table-title-main', false)">JPG</button>
+            <button class="dl-btn" onclick="downloadTableExcel('data-table','table-title-main')">Excel</button>
           </div>
         </div>
 
@@ -424,6 +425,7 @@
             </select>
             <button class="dl-btn" onclick="downloadTableCSV('avg-table','avg-table-title')">CSV</button>
             <button class="dl-btn" onclick="downloadTableJPG('avg-table','avg-table-title', false)">JPG</button>
+            <button class="dl-btn" onclick="downloadTableExcel('avg-table','avg-table-title')">Excel</button>
           </div>
         </div>
         <div class="table-wrap"><table id="avg-table"><thead></thead><tbody></tbody></table></div>
@@ -447,6 +449,7 @@
             </select>
             <button class="dl-btn" onclick="downloadTableCSV('avg-mean-table','avg-mean-table-title')">CSV</button>
             <button class="dl-btn" onclick="downloadTableJPG('avg-mean-table','avg-mean-table-title', true)">JPG</button>
+            <button class="dl-btn" onclick="downloadTableExcel('avg-mean-table','avg-mean-table-title')">Excel</button>
           </div>
         </div>
         <div class="table-wrap"><table id="avg-mean-table"><thead></thead><tbody></tbody></table></div>
@@ -761,6 +764,8 @@ function renderMeanOnlyTable(){
   t.querySelector('tbody').innerHTML=avgData.map(d=>`<tr><td>${(d.f/1e9).toFixed(4)}</td><td>${d[activeParam+'_mag'].toFixed(3)}</td></tr>`).join('');
 }
 
+// ===================== DOWNLOAD FUNCTIONS =====================
+
 function downloadTableCSV(tableId, titleId) {
   const t = document.getElementById(tableId);
   const name = document.getElementById(titleId).value || 'data';
@@ -799,6 +804,14 @@ function downloadTableJPG(tableId, titleId, isMeanOnly) {
     a.click();
     document.body.removeChild(tempDiv);
   });
+}
+
+function downloadTableExcel(tableId, titleId) {
+  const table = document.getElementById(tableId);
+  const name = document.getElementById(titleId).value || 'tabela';
+  
+  const wb = XLSX.utils.table_to_book(table, {sheet: "Dados"});
+  XLSX.writeFile(wb, name.replace(/\s+/g, '_') + '.xlsx');
 }
 
 function downloadGraph(chartId, titleId) {
