@@ -3,10 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>S1P / S2P Signal Analyzer</title>
+  <title>S1P / S2P NRW Dielétrico Pro</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <!-- SheetJS para download em Excel -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   
   <style>
@@ -18,6 +16,8 @@
       --text-secondary: #94a3b8;
       --accent: #3b82f6;
       --danger: #ef4444;
+      --success: #10b981;
+      --warning: #facc15;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,6 +41,7 @@
       padding: 6px;
       width: fit-content;
       margin-bottom: 28px;
+      border: 1px solid var(--border);
     }
 
     .tab {
@@ -71,784 +72,454 @@
       color: var(--text-secondary);
       text-transform: uppercase;
       letter-spacing: 0.6px;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
+      display: block;
     }
+
+    .config-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      background: #1e2533;
+      padding: 20px;
+      border-radius: 12px;
+      border-left: 5px solid var(--accent);
+      margin-bottom: 25px;
+    }
+
+    .input-field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    input[type="number"], input[type="text"] {
+      background: #0f1117;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+
+    input:focus { outline: none; border-color: var(--accent); }
 
     .drop-zone {
       position: relative;
       border: 2px dashed #475569;
       border-radius: 14px;
-      padding: 50px 24px;
+      padding: 60px 24px;
       text-align: center;
       cursor: pointer;
       transition: all 0.3s ease;
       background: rgba(23, 27, 38, 0.6);
-      min-height: 170px;
     }
 
     .drop-zone:hover {
       border-color: var(--accent);
-      background: rgba(59, 130, 246, 0.1);
+      background: rgba(59, 130, 246, 0.08);
     }
 
-    .drop-zone input[type="file"] {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      opacity: 0;
-      cursor: pointer;
-      z-index: 10;
-    }
-
-    .file-row {
+    .file-card {
       display: flex;
       align-items: center;
-      gap: 14px;
-      padding: 14px 18px;
+      gap: 15px;
+      padding: 15px 20px;
       background: #1e2533;
       border-radius: 12px;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
+      border: 1px solid transparent;
     }
 
-    .file-row:hover { background: #242d3d; }
-
-    .dot { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; }
-    .chip { font-size: 11.5px; padding: 3px 10px; border-radius: 9999px; background: #334155; color: var(--text-secondary); }
-
-    .rm {
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    
+    .btn-remove {
       margin-left: auto;
-      padding: 7px 14px;
       background: transparent;
       border: 1px solid var(--danger);
       color: var(--danger);
+      padding: 8px 16px;
       border-radius: 8px;
-      font-size: 13px;
       cursor: pointer;
+      font-size: 13px;
     }
 
-    .rm:hover { background: rgba(239, 68, 68, 0.12); }
+    .btn-remove:hover { background: var(--danger); color: white; }
 
-    .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .row-sb { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+    .chart-box {
+      position: relative;
+      width: 100%;
+      height: 500px;
+      margin: 20px 0;
+    }
 
-    .chart-wrap { position: relative; width: 100%; height: 400px; margin: 20px 0 10px; }
+    .control-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
 
-    .legend { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 14px; }
-    .leg-item { display: flex; align-items: center; gap: 7px; font-size: 13.5px; color: var(--text-secondary); }
-    .leg-sq { width: 22px; height: 4px; border-radius: 2px; }
+    .opt-group {
+      display: flex;
+      background: #0f1117;
+      padding: 5px;
+      border-radius: 10px;
+      gap: 4px;
+    }
 
-    .ptab {
-      padding: 7px 16px;
-      border: 1px solid var(--border);
+    .opt-btn {
+      padding: 8px 18px;
+      border: none;
       background: transparent;
       color: var(--text-secondary);
-      border-radius: 8px;
+      border-radius: 7px;
       cursor: pointer;
-      font-size: 13.5px;
+      font-weight: 500;
     }
 
-    .ptab.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .opt-btn.active { background: var(--accent); color: white; }
 
-    input[type="number"], input[type="text"], select {
+    .table-container {
+      overflow-x: auto;
+      max-height: 600px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #1e2533;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); }
+    th { background: #242d3d; position: sticky; top: 0; z-index: 10; color: var(--text-secondary); }
+
+    .action-btn {
+      padding: 10px 20px;
       background: #1e2533;
       border: 1px solid var(--border);
       color: var(--text);
-      padding: 9px 12px;
       border-radius: 8px;
-      font-size: 13.5px;
-    }
-
-    input:focus, select:focus { outline: none; border-color: var(--accent); }
-
-    .toggle-row {
+      cursor: pointer;
+      font-weight: 500;
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 13.5px;
-      color: var(--text-secondary);
-      cursor: pointer;
     }
 
-    .grid3 {
+    .action-btn:hover { border-color: var(--accent); background: #242d3d; }
+
+    .selector-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 18px;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
     }
 
-    .table-wrap {
-      overflow-x: auto;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      max-height: 420px;
+    .select-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
       background: #1e2533;
-    }
-
-    table { width: 100%; border-collapse: collapse; font-size: 13.2px; }
-    th, td { padding: 11px 14px; text-align: left; border-bottom: 1px solid #2a3242; }
-    th { background: #242d3d; position: sticky; top: 0; z-index: 10; font-weight: 500; }
-    tr:hover { background: #242d3d; }
-    .hl { background: #43381c !important; color: #fcd34d; }
-
-    .empty {
-      text-align: center;
-      padding: 70px 20px;
-      color: var(--text-secondary);
-      font-style: italic;
-    }
-
-    .badge-warn { background: rgba(234, 179, 8, 0.2); color: #facc15; }
-
-    .dl-btn {
-      padding: 9px 18px;
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text-secondary);
-      border-radius: 8px;
-      font-size: 13px;
+      border-radius: 10px;
       cursor: pointer;
+      border: 1px solid transparent;
     }
 
-    .dl-btn:hover {
-      background: #242d3d;
-      border-color: var(--accent);
-      color: var(--text);
-    }
+    .select-item.checked { border-color: var(--accent); background: rgba(59, 130, 246, 0.05); }
 
-    .name-row { display: flex; align-items: center; gap: 10px; }
-    .section-sep { height: 1px; background: var(--border); margin: 24px 0; }
-    .marker-readout { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+    .export-input-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #0f1117;
+      padding: 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    
+    .export-input-group input {
+      border: none !important;
+      background: transparent !important;
+      color: white;
+      padding: 4px 8px;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
 
-  <h1>S1P / S2P Signal Analyzer</h1>
-  <p class="subtitle">Visualize, compare e analise arquivos de parâmetros S com gráficos profissionais</p>
+  <h1>S11, S21 & Analisador de Permissividade</h1>
+  <p class="subtitle">Extração de dados dielétricos via método Nicolson-Ross-Weir (NRW)</p>
+
+  <div class="config-bar">
+    <div class="input-field">
+      <label class="sec-label">Espessura da Amostra (d) em mm</label>
+      <input type="number" id="global-thickness" value="10.000" step="0.001" oninput="syncAndRecalculate(this.value)">
+    </div>
+    <div class="input-field">
+      <label class="sec-label">Sufixo de Referência</label>
+      <input type="text" id="ref-label" placeholder="Ex: Teflon" oninput="render()">
+    </div>
+  </div>
 
   <div class="tabs">
-    <div class="tab active" onclick="switchTab('viewer')">Visualizador de Arquivos</div>
-    <div class="tab" onclick="switchTab('average')">Redução por Média</div>
+    <div class="tab active" id="btn-tab-viewer" onclick="setTab('viewer')">Visualizador Individual</div>
+    <div class="tab" id="btn-tab-average" onclick="setTab('average')">Média de Amostras</div>
   </div>
 
-  <!-- Tab Viewer -->
   <div id="tab-viewer">
     <div class="panel">
-      <div class="sec-label">Upload de Arquivos</div>
-      <div class="drop-zone">
-        <input type="file" multiple accept=".s1p,.s2p" onchange="handleFiles(this.files)">
-        <div class="drop-zone-content">
-          <p style="color:#94a3b8; font-size:15.5px; margin-bottom: 8px;">
-            Arraste seus arquivos <strong>.s1p</strong> ou <strong>.s2p</strong> aqui
-          </p>
-          <p style="color:#64748b; font-size:14px;">
-            ou clique para selecionar (máximo 10 arquivos)
-          </p>
-        </div>
+      <div class="sec-label">Upload de arquivos .s1p ou .s2p</div>
+      <div class="drop-zone" onclick="document.getElementById('file-in').click()">
+        <input type="file" id="file-in" multiple hidden accept=".s1p,.s2p" onchange="handleFileSelect(this.files)">
+        <p>Arraste os seus arquivos ou clique para navegar</p>
       </div>
+      <div id="file-list-container" style="margin-top: 20px;"></div>
     </div>
 
-    <div id="viewer-body" style="display:none">
-
+    <div id="viewer-main-content" style="display:none">
       <div class="panel">
-        <div class="row-sb">
-          <div class="sec-label">Arquivos Carregados</div>
-          <button class="dl-btn" onclick="downloadAll()">Baixar todos os arquivos originais</button>
+        <div class="control-row">
+          <div class="opt-group">
+            <button class="opt-btn active" id="v-mode-s11" onclick="setViewMode('S11')">S11 (dB)</button>
+            <button class="opt-btn" id="v-mode-s21" onclick="setViewMode('S21')">S21 (dB)</button>
+            <button class="opt-btn" id="v-mode-er" onclick="setViewMode('er')">ε' (Real)</button>
+            <button class="opt-btn" id="v-mode-ei" onclick="setViewMode('ei')">ε'' (Imag)</button>
+          </div>
+          <div class="export-input-group">
+            <input type="text" id="main-chart-title" value="Grafico_S_Eps">
+            <button class="action-btn" onclick="saveGraph('main-canvas', 'main-chart-title')">Baixar PNG</button>
+          </div>
         </div>
-        <div id="file-list"></div>
+        <div class="chart-box"><canvas id="main-canvas"></canvas></div>
       </div>
 
       <div class="panel">
-        <div class="row-sb">
-          <div class="row">
-            <div class="sec-label">Gráfico</div>
-            <div class="row" id="param-tabs" style="gap:6px"></div>
-            <div style="display:flex; gap:8px;">
-              <button class="ptab active" id="mode-mag" onclick="setMode('mag')">Magnitude (dB)</button>
-              <button class="ptab" id="mode-phase" onclick="setMode('phase')">Fase (°)</button>
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="name-row">
-              <label style="color:var(--text-secondary); white-space:nowrap;">Nome do gráfico:</label>
-              <input type="text" id="graph-title" value="Gráfico de Parâmetros S" style="width:240px">
-            </div>
-            <button class="dl-btn" onclick="downloadGraph('main-chart','graph-title')">PNG</button>
-            <button class="dl-btn" onclick="downloadGraphJPG('main-chart','graph-title')">JPG</button>
+        <div class="control-row">
+          <span class="sec-label">Tabela de Dados Completa</span>
+          <div class="export-input-group">
+            <input type="text" id="main-table-filename" value="Dados_NRW_Export">
+            <button class="action-btn" onclick="saveExcel('table-data', 'main-table-filename')" style="color:var(--success);">Exportar Excel</button>
           </div>
         </div>
-
-        <div class="legend" id="legend"></div>
-        <div class="chart-wrap"><canvas id="main-chart"></canvas></div>
-      </div>
-
-      <div class="panel">
-        <div class="grid3">
-          <div>
-            <div class="sec-label">Filtro de Frequência (GHz)</div>
-            <div class="row" style="gap:10px">
-              <input type="number" id="fmin" placeholder="Mín" step="0.01" oninput="renderTable()">
-              <span style="color:#64748b;">—</span>
-              <input type="number" id="fmax" placeholder="Máx" step="0.01" oninput="renderTable()">
-            </div>
-          </div>
-          <div>
-            <div class="sec-label">Filtro de Magnitude (dB)</div>
-            <div class="row" style="gap:10px">
-              <input type="number" id="magmin" placeholder="Mín" step="0.1" oninput="renderTable()">
-              <span style="color:#64748b;">—</span>
-              <input type="number" id="magmax" placeholder="Máx" step="0.1" oninput="renderTable()">
-            </div>
-          </div>
-          <div>
-            <div class="sec-label">Pontos na Tabela (na tela)</div>
-            <select id="table-points" onchange="renderTable()" style="width:100%;">
-              <option value="50">50 pontos</option>
-              <option value="100" selected>100 pontos</option>
-              <option value="200">200 pontos</option>
-              <option value="500">500 pontos</option>
-              <option value="0">Todos os pontos</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="section-sep"></div>
-
-        <div class="row-sb" style="margin-bottom:14px">
-          <div class="row">
-            <div class="sec-label">Tabela de Dados</div>
-            <label class="toggle-row">
-              <input type="checkbox" id="show-markers-toggle" onchange="renderTable()"> Destacar marcadores
-            </label>
-          </div>
-
-          <div class="row">
-            <div class="name-row">
-              <label style="color:var(--text-secondary); white-space:nowrap;">Nome da tabela:</label>
-              <input type="text" id="table-title-main" value="Dados S-parameter" style="width:210px">
-            </div>
-            <select id="table-image-rows" style="width:160px;">
-              <option value="20">20 linhas na foto</option>
-              <option value="50" selected>50 linhas na foto</option>
-              <option value="100">100 linhas na foto</option>
-              <option value="200">200 linhas na foto</option>
-              <option value="0">Todas as linhas na foto</option>
-            </select>
-            <button class="dl-btn" onclick="downloadTableCSV('data-table','table-title-main')">CSV</button>
-            <button class="dl-btn" onclick="downloadTableJPG('data-table','table-title-main', false)">JPG</button>
-            <button class="dl-btn" onclick="downloadTableExcel('data-table','table-title-main')">Excel</button>
-          </div>
-        </div>
-
-        <div class="table-wrap"><table id="data-table"><thead></thead><tbody></tbody></table></div>
-      </div>
-
-      <div class="panel">
-        <label class="toggle-row" style="font-size:14.2px; margin-bottom:14px;">
-          <input type="checkbox" id="markers-enabled" onchange="toggleMarkers()">
-          Ativar marcadores de magnitude (até 3 pontos)
-        </label>
-
-        <div id="markers-body" style="display:none">
-          <div class="sec-label">Frequências dos marcadores (GHz)</div>
-          <div class="grid3">
-            <div><label>Marker 1</label><input type="number" id="m1" step="0.01" placeholder="ex: 1.0" oninput="renderChart();renderTable()"></div>
-            <div><label>Marker 2</label><input type="number" id="m2" step="0.01" placeholder="ex: 2.5" oninput="renderChart();renderTable()"></div>
-            <div><label>Marker 3</label><input type="number" id="m3" step="0.01" placeholder="ex: 5.0" oninput="renderChart();renderTable()"></div>
-          </div>
-          <div id="marker-readout" class="marker-readout"></div>
-        </div>
+        <div class="table-container"><table id="table-data"></table></div>
       </div>
     </div>
   </div>
 
-  <!-- Tab Average -->
   <div id="tab-average" style="display:none">
     <div class="panel">
-      <div class="sec-label">Selecione os arquivos para calcular a média</div>
-      <div id="avg-selector"><div class="empty">Faça upload de arquivos na aba "Visualizador de Arquivos" primeiro.</div></div>
+      <div class="sec-label">Selecione as amostras para a média</div>
+      <div id="avg-selector-list" class="selector-grid"></div>
     </div>
 
-    <div id="avg-results" style="display:none">
-
-      <!-- Gráfico Original + Média -->
+    <div id="average-main-content" style="display:none">
       <div class="panel">
-        <div class="row-sb">
-          <div>
-            <span class="sec-label">Arquivos originais + Média</span>
-            <span class="badge badge-warn" style="margin-left:14px;">Linha tracejada = Média</span>
-          </div>
-          <div class="row">
-            <div class="name-row">
-              <label style="color:var(--text-secondary); white-space:nowrap;">Nome do gráfico:</label>
-              <input type="text" id="avg-graph-title" value="Original + Média" style="width:240px">
-            </div>
-            <button class="dl-btn" onclick="downloadGraph('avg-chart','avg-graph-title')">PNG</button>
-            <button class="dl-btn" onclick="downloadGraphJPG('avg-chart','avg-graph-title')">JPG</button>
+        <div class="control-row">
+          <div class="opt-group">
+            <button class="opt-btn active" id="a-mode-s11" onclick="setAvgMode('S11')">Média S11</button>
+            <button class="opt-btn" id="a-mode-s21" onclick="setAvgMode('S21')">Média S21</button>
+            <button class="opt-btn" id="a-mode-er" onclick="setAvgMode('er')">Média ε'</button>
+            <button class="opt-btn" id="a-mode-ei" onclick="setAvgMode('ei')">Média ε''</button>
           </div>
         </div>
-        <div class="legend" id="avg-legend"></div>
-        <div class="chart-wrap"><canvas id="avg-chart"></canvas></div>
+        <div class="chart-box"><canvas id="avg-canvas"></canvas></div>
       </div>
 
-      <!-- Gráfico Somente Média -->
       <div class="panel">
-        <div class="row-sb">
-          <div class="sec-label">Média (apenas)</div>
-          <div class="row">
-            <div class="name-row">
-              <label style="color:var(--text-secondary); white-space:nowrap;">Nome do gráfico:</label>
-              <input type="text" id="avg-mean-graph-title" value="Média dos Parâmetros S" style="width:240px">
-            </div>
-            <button class="dl-btn" onclick="downloadGraph('avg-mean-chart','avg-mean-graph-title')">PNG</button>
-            <button class="dl-btn" onclick="downloadGraphJPG('avg-mean-chart','avg-mean-graph-title')">JPG</button>
+        <div class="control-row">
+          <span class="sec-label">Tabela de Resultados Médios</span>
+          <div class="export-input-group">
+            <input type="text" id="avg-table-filename" value="Medias_NRW_Calculadas">
+            <button class="action-btn" onclick="saveExcel('table-avg', 'avg-table-filename')" style="color:var(--success);">Exportar Excel</button>
           </div>
         </div>
-        <div class="legend" id="avg-mean-legend"></div>
-        <div class="chart-wrap"><canvas id="avg-mean-chart"></canvas></div>
+        <div class="table-container"><table id="table-avg"></table></div>
       </div>
-
-      <!-- Tabela Original + Média -->
-      <div class="panel">
-        <div class="row-sb" style="margin-bottom:14px">
-          <div class="sec-label">Tabela Original + Média</div>
-          <div class="row">
-            <div class="name-row">
-              <label style="color:var(--text-secondary); white-space:nowrap;">Nome da tabela:</label>
-              <input type="text" id="avg-table-title" value="Original + Média" style="width:210px">
-            </div>
-            <select id="avg-table-image-rows" style="width:160px;">
-              <option value="20">20 linhas na foto</option>
-              <option value="50" selected>50 linhas na foto</option>
-              <option value="100">100 linhas na foto</option>
-              <option value="200">200 linhas na foto</option>
-              <option value="0">Todas as linhas na foto</option>
-            </select>
-            <button class="dl-btn" onclick="downloadTableCSV('avg-table','avg-table-title')">CSV</button>
-            <button class="dl-btn" onclick="downloadTableJPG('avg-table','avg-table-title', false)">JPG</button>
-            <button class="dl-btn" onclick="downloadTableExcel('avg-table','avg-table-title')">Excel</button>
-          </div>
-        </div>
-        <div class="table-wrap"><table id="avg-table"><thead></thead><tbody></tbody></table></div>
-      </div>
-
-      <!-- Tabela Somente Média -->
-      <div class="panel">
-        <div class="row-sb" style="margin-bottom:14px">
-          <div class="sec-label">Tabela da Média (apenas)</div>
-          <div class="row">
-            <div class="name-row">
-              <label style="color:var(--text-secondary); white-space:nowrap;">Nome da tabela:</label>
-              <input type="text" id="avg-mean-table-title" value="Média dos Parâmetros S" style="width:210px">
-            </div>
-            <select id="avg-mean-table-image-rows" style="width:160px;">
-              <option value="20">20 linhas na foto</option>
-              <option value="50" selected>50 linhas na foto</option>
-              <option value="100">100 linhas na foto</option>
-              <option value="200">200 linhas na foto</option>
-              <option value="0">Todas as linhas na foto</option>
-            </select>
-            <button class="dl-btn" onclick="downloadTableCSV('avg-mean-table','avg-mean-table-title')">CSV</button>
-            <button class="dl-btn" onclick="downloadTableJPG('avg-mean-table','avg-mean-table-title', true)">JPG</button>
-            <button class="dl-btn" onclick="downloadTableExcel('avg-mean-table','avg-mean-table-title')">Excel</button>
-          </div>
-        </div>
-        <div class="table-wrap"><table id="avg-mean-table"><thead></thead><tbody></tbody></table></div>
-      </div>
-
     </div>
   </div>
 
   <script>
-const COLORS = ['#3b82f6','#f59e0b','#10b981','#8b5cf6','#ef4444','#14b8a6','#eab308','#2563eb','#a855f7','#22c55e'];
-let files = [];
-let mainChart = null, avgChart = null, avgMeanChart = null;
-let activeParam = 'S11', activeMode = 'mag';
-let avgSelected = new Set();
-let avgData = null;
+    let store = []; 
+    let vMode = 'S11';
+    let aMode = 'S11';
+    let selectedAvgIndices = new Set();
+    let mainChart = null;
+    let avgChart = null;
+    const SPEED_LIGHT = 299792458;
 
-function switchTab(t) {
-  if (t === 'average' && files.length === 0) {
-    alert("Faça upload de pelo menos 2 arquivos na aba 'Visualizador de Arquivos' antes de acessar a redução por média.");
-    return;
-  }
-  document.getElementById('tab-viewer').style.display = t === 'viewer' ? '' : 'none';
-  document.getElementById('tab-average').style.display = t === 'average' ? '' : 'none';
-  document.querySelectorAll('.tab').forEach((b, i) => b.classList.toggle('active', (i===0 && t==='viewer') || (i===1 && t==='average')));
-  if (t === 'average') renderAvgTab();
-}
+    function setTab(t) {
+      document.getElementById('tab-viewer').style.display = t === 'viewer' ? 'block' : 'none';
+      document.getElementById('tab-average').style.display = t === 'average' ? 'block' : 'none';
+      document.getElementById('btn-tab-viewer').classList.toggle('active', t === 'viewer');
+      document.getElementById('btn-tab-average').classList.toggle('active', t === 'average');
+      if (t === 'average') renderAvgSelectors();
+    }
 
-function handleFiles(filelist) {
-  Array.from(filelist).forEach(f => {
-    const ext = f.name.split('.').pop().toLowerCase();
-    if (!['s1p','s2p'].includes(ext)) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-      const p = parseSnP(e.target.result, ext, f.name);
-      if (p) { files.push(p); render(); }
-    };
-    reader.readAsText(f);
-  });
-}
+    function syncAndRecalculate() {
+      runNRWCalculations();
+      render();
+    }
 
-function parseSnP(text, ext, name) {
-  const lines = text.split('\n').filter(l => l.trim() && !l.startsWith('!')).map(l => l.trim());
-  let freqMul = 1e9, fmt = 'MA';
-  const opts = lines.find(l => l.startsWith('#'));
-  if (opts) {
-    const p = opts.toLowerCase().split(/\s+/);
-    const ui = p.findIndex(x => ['ghz','mhz','khz','hz'].includes(x));
-    if (ui >= 0) freqMul = p[ui]==='ghz'?1e9:p[ui]==='mhz'?1e6:p[ui]==='khz'?1e3:1;
-    if (p.includes('db')) fmt = 'DB';
-    else if (p.includes('ri')) fmt = 'RI';
-  }
-  const numPorts = ext === 's2p' ? 2 : 1;
-  const data = lines.filter(l => !l.startsWith('#')).map(l => {
-    const v = l.split(/\s+/).map(Number);
-    const freq = v[0] * freqMul;
-    if (isNaN(freq)) return null;
-    const pt = {f: freq};
-    if (numPorts === 1) {
-      pt.S11_mag = toMagDB(v[1],v[2],fmt);
-      pt.S11_phase = toPhase(v[1],v[2],fmt);
-    } else {
-      [[1,2,'S11'],[3,4,'S21'],[5,6,'S12'],[7,8,'S22']].forEach(([a,b,k]) => {
-        pt[k+'_mag'] = toMagDB(v[a],v[b],fmt);
-        pt[k+'_phase'] = toPhase(v[a],v[b],fmt);
+    function handleFileSelect(files) {
+      Array.from(files).forEach(f => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const parsed = parseSParameter(e.target.result, f.name);
+          if (parsed) { store.push(parsed); runNRWCalculations(); render(); }
+        };
+        reader.readAsText(f);
       });
     }
-    return pt;
-  }).filter(Boolean);
 
-  const avail = [...new Set(Object.keys(data[0]||{}).filter(k=>k!=='f').map(k=>k.replace(/_mag|_phase/,'')))];
-  return {name, ext, data, avail, color: COLORS[files.length % COLORS.length], raw: text};
-}
+    function parseSParameter(text, filename) {
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('!'));
+      let mult = 1e9;
+      const header = lines.find(l => l.startsWith('#'));
+      if (header) {
+        const h = header.toLowerCase();
+        if (h.includes('mhz')) mult = 1e6;
+        else if (h.includes('hz') && !h.includes('ghz')) mult = 1;
+      }
+      const data = lines.filter(l => !l.startsWith('#')).map(line => {
+        const cols = line.split(/\s+/).map(Number);
+        if (cols.length < 3 || isNaN(cols[0])) return null;
+        return {
+          freq: cols[0] * mult,
+          s11: { re: cols[1], im: cols[2] },
+          s21: cols.length >= 5 ? { re: cols[3], im: cols[4] } : null
+        };
+      }).filter(Boolean);
+      return data.length ? { id: Date.now()+Math.random(), name: filename, data, color: `hsl(${Math.random()*360}, 70%, 50%)` } : null;
+    }
 
-function toMagDB(a,b,fmt){ if(fmt==='DB')return a; if(fmt==='MA')return 20*Math.log10(Math.abs(a)||1e-20); return 20*Math.log10(Math.sqrt(a*a+b*b)||1e-20); }
-function toPhase(a,b,fmt){ if(fmt==='DB')return b; if(fmt==='MA')return a*Math.cos(b*Math.PI/180); return Math.atan2(b,a)*180/Math.PI; }
+    function runNRWCalculations() {
+      const d = parseFloat(document.getElementById('global-thickness').value) / 1000;
+      store.forEach(file => {
+        file.data.forEach(pt => {
+          const s11 = pt.s11; const s21 = pt.s21;
+          pt.s11db = 20 * Math.log10(Math.sqrt(s11.re**2 + s11.im**2) || 1e-12);
+          if (!s21) { pt.er = 0; pt.ei = 0; pt.s21db = -100; return; }
+          pt.s21db = 20 * Math.log10(Math.sqrt(s21.re**2 + s21.im**2) || 1e-12);
+          
+          const s11sq = cmul(s11, s11); const s21sq = cmul(s21, s21);
+          const X = cdiv({ re: s11sq.re - s21sq.re + 1, im: s11sq.im - s21sq.im }, { re: 2 * s11.re, im: 2 * s11.im });
+          const rootX = csqrt({ re: X.re**2 - X.im**2 - 1, im: 2 * X.re * X.im });
+          let gamma = { re: X.re + rootX.re, im: X.im + rootX.im };
+          if (cabs(gamma) > 1) gamma = { re: X.re - rootX.re, im: X.im - rootX.im };
+          const sSum = { re: s11.re + s21.re, im: s11.im + s21.im };
+          const T = cdiv({ re: sSum.re - gamma.re, im: sSum.im - gamma.im }, { re: 1 - (sSum.re * gamma.re - sSum.im * gamma.im), im: -(sSum.re * gamma.im + sSum.im * gamma.re) });
+          const invT = cdiv({re:1, im:0}, T);
+          const lnInvT = { re: Math.log(cabs(invT)), im: Math.atan2(invT.im, invT.re) };
+          const factor = -Math.pow((SPEED_LIGHT / pt.freq) / (2 * Math.PI * d), 2);
+          const lnSq = cmul(lnInvT, lnInvT);
+          pt.er = lnSq.re * factor; pt.ei = lnSq.im * factor;
+        });
+      });
+    }
 
-function getFilteredData(f) {
-  const fmin = parseFloat(document.getElementById('fmin').value)*1e9;
-  const fmax = parseFloat(document.getElementById('fmax').value)*1e9;
-  const mmin = parseFloat(document.getElementById('magmin').value);
-  const mmax = parseFloat(document.getElementById('magmax').value);
-  const key = activeParam+'_mag';
-  return f.data.filter(d=>{
-    if(!isNaN(fmin)&&d.f<fmin)return false;
-    if(!isNaN(fmax)&&d.f>fmax)return false;
-    const m=d[key]; if(m===undefined)return true;
-    if(!isNaN(mmin)&&m<mmin)return false;
-    if(!isNaN(mmax)&&m>mmax)return false;
-    return true;
-  });
-}
+    function cmul(a, b) { return { re: a.re * b.re - a.im * b.im, im: a.re * b.im + a.im * b.re }; }
+    function cdiv(a, b) { const d = b.re**2 + b.im**2; return { re: (a.re * b.re + a.im * b.im) / d, im: (a.im * b.re - a.re * b.im) / d }; }
+    function csqrt(a) { const r = Math.sqrt(a.re**2 + a.im**2); return { re: Math.sqrt((r + a.re) / 2), im: (a.im >= 0 ? 1 : -1) * Math.sqrt((r - a.re) / 2) }; }
+    function cabs(a) { return Math.sqrt(a.re**2 + a.im**2); }
 
-function getTablePoints() {
-  const val = parseInt(document.getElementById('table-points').value);
-  return val === 0 ? Infinity : val;
-}
+    function render() {
+      const list = document.getElementById('file-list-container');
+      list.innerHTML = store.map((f, i) => `<div class="file-card"><div class="dot" style="background:${f.color}"></div><span>${f.name}</span><button class="btn-remove" onclick="removeFile(${i})">Remover</button></div>`).join('');
+      if (store.length) { document.getElementById('viewer-main-content').style.display='block'; updateMainChart(); updateMainTable(); }
+      if (selectedAvgIndices.size) updateAverageResults();
+    }
 
-function render() {
-  document.getElementById('viewer-body').style.display = '';
-  renderFileList();
-  updateParamTabs();
-  renderChart();
-  renderTable();
-  renderAvgTab();
-}
+    function removeFile(i) { store.splice(i,1); selectedAvgIndices.delete(i); render(); }
 
-function renderFileList() {
-  document.getElementById('file-list').innerHTML = files.map((f,i)=>`
-    <div class="file-row">
-      <div class="dot" style="background:${f.color}"></div>
-      <span style="flex:1;font-weight:500">${f.name}</span>
-      <span class="chip">.${f.ext.toUpperCase()}</span>
-      <span class="chip">${f.data.length} pts</span>
-      <button class="rm" onclick="removeFile(${i});event.stopImmediatePropagation();">Remover</button>
-    </div>`).join('');
-}
+    function setViewMode(m) { vMode = m; document.querySelectorAll('#tab-viewer .opt-btn').forEach(b => b.classList.remove('active')); document.getElementById(`v-mode-${m.toLowerCase()}`).classList.add('active'); updateMainChart(); }
 
-function removeFile(i) {
-  files.splice(i,1);
-  files.forEach((f,j)=>f.color=COLORS[j%COLORS.length]);
-  avgSelected = new Set([...avgSelected].filter(x=>x<files.length));
-  if(files.length===0) document.getElementById('viewer-body').style.display='none';
-  else render();
-}
+    function updateMainChart() {
+      const ctx = document.getElementById('main-canvas').getContext('2d');
+      if (mainChart) mainChart.destroy();
+      mainChart = new Chart(ctx, {
+        type: 'line',
+        data: { datasets: store.map(f => ({ label: f.name, data: f.data.map(d => ({ x: d.freq / 1e9, y: vMode === 'S11' ? d.s11db : vMode === 'S21' ? d.s21db : vMode === 'er' ? d.er : d.ei })), borderColor: f.color, pointRadius: 0, borderWidth: 2 })) },
+        options: { 
+          responsive: true, maintainAspectRatio: false,
+          scales: { x: { type: 'linear', title: { display: true, text: 'Frequência (GHz)', color: '#94a3b8' }, grid: { color: '#2a3242' } }, y: { grid: { color: '#2a3242' } } },
+          plugins: { legend: { labels: { color: '#e2e8f0' } } }
+        }
+      });
+    }
 
-function updateParamTabs() {
-  const allP = [...new Set(files.flatMap(f=>f.avail))];
-  if(!allP.includes(activeParam)) activeParam = allP[0]||'S11';
-  document.getElementById('param-tabs').innerHTML = allP.map(p=>`<button class="ptab${p===activeParam?' active':''}" onclick="setParam('${p}')">${p}</button>`).join('');
-}
+    function updateMainTable() {
+      let html = `<thead><tr><th>Freq (GHz)</th>`;
+      store.forEach(f => { html += `<th>${f.name} S11</th><th>${f.name} ε'</th><th>${f.name} ε''</th>`; });
+      html += `</tr></thead><tbody>`;
+      store[0].data.forEach((_, idx) => {
+        html += `<tr><td>${(store[0].data[idx].freq / 1e9).toFixed(4)}</td>`;
+        store.forEach(f => { html += `<td>${f.data[idx].s11db.toFixed(2)}</td><td>${f.data[idx].er.toFixed(4)}</td><td>${f.data[idx].ei.toFixed(4)}</td>`; });
+        html += `</tr>`;
+      });
+      document.getElementById('table-data').innerHTML = html + `</tbody>`;
+    }
 
-function setParam(p){activeParam=p;updateParamTabs();renderChart();renderTable();}
-function setMode(m){
-  activeMode=m;
-  document.getElementById('mode-mag').classList.toggle('active',m==='mag');
-  document.getElementById('mode-phase').classList.toggle('active',m==='phase');
-  renderChart();renderTable();
-}
+    function renderAvgSelectors() {
+      document.getElementById('avg-selector-list').innerHTML = store.map((f, i) => `<div class="select-item ${selectedAvgIndices.has(i) ? 'checked' : ''}" onclick="toggleAvg(${i})"><input type="checkbox" ${selectedAvgIndices.has(i) ? 'checked' : ''}><span>${f.name}</span></div>`).join('');
+    }
 
-function toggleMarkers(){
-  const on=document.getElementById('markers-enabled').checked;
-  document.getElementById('markers-body').style.display=on?'':'none';
-  renderChart();renderTable();
-}
+    function toggleAvg(i) {
+      if (selectedAvgIndices.has(i)) selectedAvgIndices.delete(i); else selectedAvgIndices.add(i);
+      renderAvgSelectors();
+      if (selectedAvgIndices.size) updateAverageResults(); else document.getElementById('average-main-content').style.display='none';
+    }
 
-function renderChart() {
-  const ctx=document.getElementById('main-chart').getContext('2d');
-  if(mainChart)mainChart.destroy();
-  const key=activeParam+'_'+(activeMode==='mag'?'mag':'phase');
-  const markers=getMarkers();
-  const markerPlugin={id:'markerLines',afterDraw(chart){
-    if(!markers.length)return;
-    const {ctx:c,scales:{x,y}}=chart;
-    markers.forEach((mf,mi)=>{
-      const px=x.getPixelForValue(mf/1e9);
-      c.save();c.strokeStyle=['#ef4444','#f59e0b','#a855f7'][mi];c.lineWidth=1.5;
-      c.setLineDash([5,4]);c.beginPath();c.moveTo(px,y.top);c.lineTo(px,y.bottom);c.stroke();
-      c.fillStyle=['#ef4444','#f59e0b','#a855f7'][mi];c.font='10px sans-serif';
-      c.fillText(`M${mi+1}`,px+3,y.top+10);c.restore();
-    });
-  }};
-  const datasets=files.map(f=>{
-    const fd=getFilteredData(f).filter(d=>d[key]!==undefined);
-    return{label:f.name,data:fd.map(d=>({x:parseFloat((d.f/1e9).toFixed(4)),y:parseFloat(d[key].toFixed(3))})),borderColor:f.color,backgroundColor:'transparent',borderWidth:1.8,pointRadius:0,tension:0.25};
-  });
-  document.getElementById('legend').innerHTML=files.map(f=>`<span class="leg-item"><span class="leg-sq" style="background:${f.color}"></span>${f.name}</span>`).join('');
-  mainChart=new Chart(ctx,{type:'line',data:{datasets},plugins:[markerPlugin],
-    options:{responsive:true,maintainAspectRatio:false,animation:false,
-      scales:{x:{type:'linear',title:{display:true,text:'Frequency (GHz)',font:{size:12}}},
-        y:{title:{display:true,text:activeMode==='mag'?`${activeParam} (dB)`:`${activeParam} phase (deg)`,font:{size:12}}}},
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>`${i.dataset.label}: ${i.parsed.y.toFixed(3)}`}}}}});
-  updateMarkerReadout(key);
-}
+    function setAvgMode(m) { aMode = m; document.querySelectorAll('#tab-average .opt-btn').forEach(b => b.classList.remove('active')); document.getElementById(`a-mode-${m.toLowerCase()}`).classList.add('active'); updateAverageResults(); }
 
-function getMarkers(){
-  const enabled=document.getElementById('markers-enabled').checked;
-  if(!enabled)return[];
-  return['m1','m2','m3'].map(id=>{const v=parseFloat(document.getElementById(id).value);return isNaN(v)?null:v*1e9;}).filter(Boolean);
-}
+    function updateAverageResults() {
+      document.getElementById('average-main-content').style.display = 'block';
+      const sel = Array.from(selectedAvgIndices).map(i => store[i]);
+      const avgs = sel[0].data.map((_, idx) => {
+        let s11=0, s21=0, er=0, ei=0;
+        sel.forEach(f => { s11+=f.data[idx].s11db; s21+=f.data[idx].s21db; er+=f.data[idx].er; ei+=f.data[idx].ei; });
+        return { freq: sel[0].data[idx].freq, S11: s11/sel.length, S21: s21/sel.length, er: er/sel.length, ei: ei/sel.length };
+      });
 
-function updateMarkerReadout(key){
-  const markers=getMarkers();
-  if(!markers.length){document.getElementById('marker-readout').innerHTML='';return;}
-  const readout=markers.map((mf,mi)=>{
-    const vals=files.map(f=>{
-      const closest=getFilteredData(f).filter(d=>d[key]!==undefined).reduce((best,d)=>Math.abs(d.f-mf)<Math.abs(best.f-mf)?d:best,{f:Infinity});
-      return closest&&isFinite(closest.f)?`${f.name.split('.')[0]}: ${closest[key].toFixed(2)}`:'—';
-    }).join(', ');
-    const mcol=['#ef4444','#f59e0b','#a855f7'][mi];
-    return`<span style="padding:4px 12px;border-radius:8px;border:1px solid ${mcol};color:${mcol};font-size:13px">${mcol.includes('ef4444')?'🔴':mcol.includes('f59e0b')?'🟠':'🟣'} M${mi+1} @ ${(mf/1e9).toFixed(3)} GHz — ${vals}</span>`;
-  }).join('');
-  document.getElementById('marker-readout').innerHTML=readout;
-}
+      const ctx = document.getElementById('avg-canvas').getContext('2d');
+      if (avgChart) avgChart.destroy();
+      avgChart = new Chart(ctx, {
+        type: 'line',
+        data: { datasets: [{ label: 'Média Calculada', data: avgs.map(a => ({ x: a.freq/1e9, y: aMode==='S11'?a.S11 : aMode==='S21'?a.S21 : aMode==='er'?a.er : a.ei })), borderColor: '#3b82f6', pointRadius: 0, fill: true, backgroundColor: 'rgba(59,130,246,0.1)' }] },
+        options: { 
+          responsive: true, maintainAspectRatio: false,
+          scales: { x: { type: 'linear', title: { display: true, text: 'Frequência (GHz)' } } }
+        }
+      });
 
-function renderTable() {
-  const t=document.getElementById('data-table');
-  const key=activeParam+'_'+(activeMode==='mag'?'mag':'phase');
-  const unit=activeMode==='mag'?'dB':'deg';
-  const filesWithKey=files.filter(f=>f.avail.includes(activeParam));
-  if(!filesWithKey.length){t.querySelector('thead').innerHTML='';t.querySelector('tbody').innerHTML='';return;}
-  const markers=document.getElementById('show-markers-toggle').checked?getMarkers():[];
-  let allFreqs=[...new Set(filesWithKey.flatMap(f=>getFilteredData(f).map(d=>d.f)))].sort((a,b)=>a-b);
-  const maxPoints=getTablePoints();
-  if(maxPoints!==Infinity&&allFreqs.length>maxPoints){
-    const step=Math.ceil(allFreqs.length/maxPoints);
-    allFreqs=allFreqs.filter((_,i)=>i%step===0);
-  }
-  t.querySelector('thead').innerHTML=`<tr><th>Freq (GHz)</th>${filesWithKey.map(f=>`<th>${f.name} (${unit})</th>`).join('')}</tr>`;
-  t.querySelector('tbody').innerHTML=allFreqs.map(freq=>{
-    const isMarked=markers.some(m=>Math.abs(freq-m)<(allFreqs[1]-allFreqs[0]||1e6)/2);
-    const cls=isMarked?' class="hl"':'';
-    return`<tr${isMarked?' style="background:#43381c"':''}><td${cls}>${(freq/1e9).toFixed(4)}</td>${filesWithKey.map(f=>{
-      const pt=getFilteredData(f).find(d=>d.f===freq);
-      return`<td${cls}>${pt&&pt[key]!==undefined?pt[key].toFixed(3):'—'}</td>`;
-    }).join('')}</tr>`;
-  }).join('');
-}
+      let html = `<thead><tr><th>Freq (GHz)</th><th>S11 Médio</th><th>S21 Médio</th><th>ε' Médio</th><th>ε'' Médio</th></tr></thead><tbody>`;
+      avgs.forEach(a => { html += `<tr><td>${(a.freq/1e9).toFixed(4)}</td><td>${a.S11.toFixed(3)}</td><td>${a.S21.toFixed(3)}</td><td>${a.er.toFixed(5)}</td><td>${a.ei.toFixed(5)}</td></tr>`; });
+      document.getElementById('table-avg').innerHTML = html + `</tbody>`;
+    }
 
-function renderAvgTab() {
-  const el = document.getElementById('avg-selector');
-  if (!files.length) {
-    el.innerHTML = '<div class="empty">Faça upload de arquivos na aba "Visualizador de Arquivos" primeiro.</div>';
-    document.getElementById('avg-results').style.display = 'none';
-    return;
-  }
-  el.innerHTML = files.map((f,i) => `
-    <div class="file-row" style="cursor:pointer" onclick="toggleAvg(${i})">
-      <input type="checkbox" ${avgSelected.has(i)?'checked':''} style="pointer-events:none">
-      <div class="dot" style="background:${f.color}"></div>
-      <span style="flex:1;font-weight:500">${f.name}</span>
-      <span class="chip">.${f.ext.toUpperCase()}</span>
-    </div>`).join('');
-  if (avgSelected.size >= 2) computeAvg();
-  else document.getElementById('avg-results').style.display = 'none';
-}
+    function saveExcel(tableId, inputId) {
+      const table = document.getElementById(tableId);
+      const filename = document.getElementById(inputId).value || 'Export';
+      const wb = XLSX.utils.table_to_book(table);
+      XLSX.writeFile(wb, `${filename}.xlsx`);
+    }
 
-function toggleAvg(i){if(avgSelected.has(i))avgSelected.delete(i);else avgSelected.add(i);renderAvgTab();}
-
-function computeAvg(){
-  const sel=[...avgSelected].map(i=>files[i]);
-  const magKey=activeParam+'_mag';
-  const freqMap={};
-  sel.forEach(f=>f.data.forEach(d=>{
-    const k=d.f.toFixed(0);
-    if(!freqMap[k])freqMap[k]={f:d.f,vals:[]};
-    if(d[magKey]!==undefined)freqMap[k].vals.push(d[magKey]);
-  }));
-  avgData=Object.values(freqMap).filter(d=>d.vals.length>0)
-    .map(d=>({f:d.f,[magKey]:d.vals.reduce((a,b)=>a+b,0)/d.vals.length})).sort((a,b)=>a.f-b.f);
-
-  renderAvgChart(sel,magKey);
-  renderAvgTableWithOriginal(sel,magKey);
-  renderMeanOnlyChart();
-  renderMeanOnlyTable();
-  document.getElementById('avg-results').style.display='';
-}
-
-function renderAvgChart(sel,key){
-  const ctx=document.getElementById('avg-chart').getContext('2d');
-  if(avgChart)avgChart.destroy();
-  const datasets=sel.map(f=>({
-    label:f.name,data:f.data.filter(d=>d[key]!==undefined).map(d=>({x:parseFloat((d.f/1e9).toFixed(4)),y:parseFloat(d[key].toFixed(3))})),
-    borderColor:f.color,backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0.25
-  }));
-  datasets.push({label:'Média',data:avgData.map(d=>({x:parseFloat((d.f/1e9).toFixed(4)),y:parseFloat(d[key].toFixed(3))})),borderColor:'#e2e8f0',backgroundColor:'transparent',borderWidth:3,pointRadius:0,tension:0.25,borderDash:[6,4]});
-  document.getElementById('avg-legend').innerHTML=sel.map(f=>`<span class="leg-item"><span class="leg-sq" style="background:${f.color}"></span>${f.name}</span>`).join('')+
-    `<span class="leg-item"><span class="leg-sq" style="background:repeating-linear-gradient(90deg,#e2e8f0 0,#e2e8f0 6px,transparent 6px,transparent 11px)"></span>Média</span>`;
-  avgChart=new Chart(ctx,{type:'line',data:{datasets},options:{responsive:true,maintainAspectRatio:false,animation:false,
-    scales:{x:{type:'linear',title:{display:true,text:'Frequency (GHz)',font:{size:12}}},
-      y:{title:{display:true,text:`${activeParam} (dB)`,font:{size:12}}}},
-    plugins:{legend:{display:false}}}});
-}
-
-function renderAvgTableWithOriginal(sel, key) {
-  const t = document.getElementById('avg-table');
-  let header = '<tr><th>Freq (GHz)</th>';
-  sel.forEach(f => header += `<th>${f.name}</th>`);
-  header += `<th>Média ${activeParam} (dB)</th></tr>`;
-  t.querySelector('thead').innerHTML = header;
-
-  t.querySelector('tbody').innerHTML = avgData.map(d => {
-    let row = `<tr><td>${(d.f/1e9).toFixed(4)}</td>`;
-    sel.forEach(f => {
-      const original = f.data.find(p => Math.abs(p.f - d.f) < 1e6);
-      row += `<td>${original && original[key] !== undefined ? original[key].toFixed(3) : '—'}</td>`;
-    });
-    row += `<td>${d[key].toFixed(3)}</td></tr>`;
-    return row;
-  }).join('');
-}
-
-function renderMeanOnlyChart(){
-  const ctx=document.getElementById('avg-mean-chart').getContext('2d');
-  if(avgMeanChart)avgMeanChart.destroy();
-  const key=activeParam+'_mag';
-  const datasets=[{
-    label:'Média',
-    data:avgData.map(d=>({x:parseFloat((d.f/1e9).toFixed(4)),y:parseFloat(d[key].toFixed(3))})),
-    borderColor:'#e2e8f0',backgroundColor:'transparent',borderWidth:3,pointRadius:0,tension:0.25
-  }];
-  document.getElementById('avg-mean-legend').innerHTML=`<span class="leg-item"><span class="leg-sq" style="background:#e2e8f0"></span>Média</span>`;
-  avgMeanChart=new Chart(ctx,{type:'line',data:{datasets},
-    options:{responsive:true,maintainAspectRatio:false,animation:false,
-      scales:{x:{type:'linear',title:{display:true,text:'Frequency (GHz)',font:{size:12}}},
-        y:{title:{display:true,text:`${activeParam} (dB)`,font:{size:12}}}},
-      plugins:{legend:{display:false}}}});
-}
-
-function renderMeanOnlyTable(){
-  const t=document.getElementById('avg-mean-table');
-  t.querySelector('thead').innerHTML=`<tr><th>Freq (GHz)</th><th>Média ${activeParam} (dB)</th></tr>`;
-  t.querySelector('tbody').innerHTML=avgData.map(d=>`<tr><td>${(d.f/1e9).toFixed(4)}</td><td>${d[activeParam+'_mag'].toFixed(3)}</td></tr>`).join('');
-}
-
-// ===================== DOWNLOAD FUNCTIONS =====================
-
-function downloadTableCSV(tableId, titleId) {
-  const t = document.getElementById(tableId);
-  const name = document.getElementById(titleId).value || 'data';
-  let csv = '';
-  [...t.querySelectorAll('tr')].forEach(r => {
-    csv += [...r.querySelectorAll('th,td')].map(c => '"' + c.textContent + '"').join(',') + '\n';
-  });
-  dlFile(csv, name.replace(/\s+/g, '_') + '.csv', 'text/csv');
-}
-
-function downloadTableJPG(tableId, titleId, isMeanOnly) {
-  const selectId = isMeanOnly ? 'avg-mean-table-image-rows' : 'avg-table-image-rows';
-  const maxRows = parseInt(document.getElementById(selectId).value) || Infinity;
-
-  const originalTable = document.getElementById(tableId);
-  const tempDiv = document.createElement('div');
-  tempDiv.style.position = 'absolute';
-  tempDiv.style.left = '-99999px';
-  tempDiv.style.top = '-99999px';
-  const tempTable = originalTable.cloneNode(true);
-  const tbody = tempTable.querySelector('tbody');
-  const rows = Array.from(tbody.querySelectorAll('tr'));
-
-  if (maxRows !== Infinity && rows.length > maxRows) {
-    tbody.innerHTML = rows.slice(0, maxRows).map(r => r.outerHTML).join('');
-  }
-
-  tempDiv.appendChild(tempTable);
-  document.body.appendChild(tempDiv);
-
-  html2canvas(tempDiv, {backgroundColor: '#1e2533', scale: 2}).then(canvas => {
-    const name = document.getElementById(titleId).value || 'tabela';
-    const a = document.createElement('a');
-    a.download = name.replace(/\s+/g, '_') + '.jpg';
-    a.href = canvas.toDataURL('image/jpeg', 0.92);
-    a.click();
-    document.body.removeChild(tempDiv);
-  });
-}
-
-function downloadTableExcel(tableId, titleId) {
-  const table = document.getElementById(tableId);
-  const name = document.getElementById(titleId).value || 'tabela';
-  
-  const wb = XLSX.utils.table_to_book(table, {sheet: "Dados"});
-  XLSX.writeFile(wb, name.replace(/\s+/g, '_') + '.xlsx');
-}
-
-function downloadGraph(chartId, titleId) {
-  const name = document.getElementById(titleId).value || 'graph';
-  const canvas = document.getElementById(chartId);
-  const out = document.createElement('canvas');
-  out.width = canvas.width; out.height = canvas.height;
-  const c = out.getContext('2d');
-  c.fillStyle = '#0f1117'; c.fillRect(0, 0, out.width, out.height);
-  c.drawImage(canvas, 0, 0);
-  const a = document.createElement('a');
-  a.download = name.replace(/\s+/g, '_') + '.png';
-  a.href = out.toDataURL('image/png');
-  a.click();
-}
-
-function downloadGraphJPG(chartId, titleId) {
-  const name = document.getElementById(titleId).value || 'graph';
-  const canvas = document.getElementById(chartId);
-  const out = document.createElement('canvas');
-  out.width = canvas.width; out.height = canvas.height;
-  const c = out.getContext('2d');
-  c.fillStyle = '#0f1117'; c.fillRect(0, 0, out.width, out.height);
-  c.drawImage(canvas, 0, 0);
-  const a = document.createElement('a');
-  a.download = name.replace(/\s+/g, '_') + '.jpg';
-  a.href = out.toDataURL('image/jpeg', 0.92);
-  a.click();
-}
-
-function downloadAll(){files.forEach(f=>dlFile(f.raw,f.name,'text/plain'));}
-
-function dlFile(content,name,type){
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([content],{type}));
-  a.download=name;a.click();
-}
+    function saveGraph(canvasId, titleInputId) {
+      const canvas = document.getElementById(canvasId);
+      const name = document.getElementById(titleInputId).value || 'grafico';
+      const offscreen = document.createElement('canvas');
+      offscreen.width = canvas.width; offscreen.height = canvas.height;
+      const ctx = offscreen.getContext('2d');
+      ctx.fillStyle = '#0f1117'; ctx.fillRect(0,0,offscreen.width, offscreen.height);
+      ctx.drawImage(canvas, 0, 0);
+      const link = document.createElement('a');
+      link.download = `${name}.png`;
+      link.href = offscreen.toDataURL('image/png');
+      link.click();
+    }
   </script>
 </body>
 </html>
