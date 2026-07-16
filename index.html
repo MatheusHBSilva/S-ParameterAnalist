@@ -6,6 +6,7 @@
   <title>S1P / S2P NRW Dielétrico Pro</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
   
   <style>
     :root {
@@ -93,7 +94,7 @@
       gap: 8px;
     }
 
-    input[type="number"], input[type="text"] {
+    input[type="number"], input[type="text"], select {
       background: #0f1117;
       border: 1px solid var(--border);
       color: var(--text);
@@ -103,7 +104,7 @@
       transition: border-color 0.2s;
     }
 
-    input:focus { outline: none; border-color: var(--accent); }
+    input:focus, select:focus { outline: none; border-color: var(--accent); }
 
     .drop-zone {
       position: relative;
@@ -224,6 +225,14 @@
       border: 1px solid var(--border);
     }
 
+    /* Ajuste para o container do Plotly herdar o fundo escuro se desejado, ou branco */
+    .plotly-box {
+      background: #1e2533 !important;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
     .control-row {
       display: flex;
       justify-content: space-between;
@@ -317,6 +326,27 @@
       padding: 4px 8px;
       font-size: 13px;
     }
+
+    /* Layout do painel 3D */
+    .grid-3d-layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+    }
+    @media(max-width: 900px) {
+      .grid-3d-layout { grid-template-columns: 1fr; }
+    }
+
+    .equation-card {
+      background: #0f1117;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+      font-family: monospace;
+      color: var(--warning);
+      word-break: break-all;
+    }
   </style>
 </head>
 <body>
@@ -346,6 +376,7 @@
   <div class="tabs">
     <div class="tab active" id="btn-tab-viewer" onclick="setTab('viewer')">Visualizador Individual</div>
     <div class="tab" id="btn-tab-average" onclick="setTab('average')">Média de Amostras</div>
+    <div class="tab" id="btn-tab-3d" onclick="setTab('3d')">Ajuste de Superfície 3D</div>
   </div>
 
   <div id="tab-viewer">
@@ -420,6 +451,61 @@
     </div>
   </div>
 
+  <div id="tab-3d" style="display:none">
+    <div class="panel">
+      <div class="sec-label">Upload do arquivo de medições (.csv)</div>
+      <div class="drop-zone" onclick="document.getElementById('csv-file-in').click()">
+        <input type="file" id="csv-file-in" hidden accept=".csv" onchange="handleCSVSelect(this.files)">
+        <p>Arraste seu CSV de dados experimentais ou clique para navegar</p>
+      </div>
+    </div>
+
+    <div id="content-3d" style="display: none;" class="grid-3d-layout">
+      <div class="panel" style="margin-bottom: 0;">
+        <span class="sec-label">Mapeamento dos Eixos</span>
+        
+        <div class="input-field" style="margin-bottom: 15px;">
+          <label>Eixo X (Independente 1)</label>
+          <select id="select-x" onchange="run3DFitting()"></select>
+        </div>
+
+        <div class="input-field" style="margin-bottom: 15px;">
+          <label>Eixo Y (Independente 2)</label>
+          <select id="select-y" onchange="run3DFitting()"></select>
+        </div>
+
+        <div class="input-field" style="margin-bottom: 15px;">
+          <label>Eixo Z (Dependente / Alvo)</label>
+          <select id="select-z" onchange="run3DFitting()"></select>
+        </div>
+
+        <div class="input-field" style="margin-bottom: 15px;">
+          <label>Coluna de Categorias (Legenda)</label>
+          <select id="select-category" onchange="run3DFitting()"></select>
+        </div>
+
+        <span class="sec-label" style="margin-top: 25px;">Métricas de Ajuste</span>
+        <div style="font-size: 15px; font-weight: 500; color: white;">
+          R²: <span id="val-r2" style="color: var(--success);">--</span><br>
+          RMSE: <span id="val-rmse" style="color: var(--danger);">--</span>
+        </div>
+
+        <span class="sec-label" style="margin-top: 20px;">Modelo Quadrático</span>
+        <div style="font-size: 12px; color: var(--text-secondary);">
+          z = a + b·x + c·y + d·x² + e·x·y + f·y²
+        </div>
+        <div id="equation-text" class="equation-card">Aguardando dados...</div>
+      </div>
+
+      <div class="panel" style="margin-bottom: 0; display: flex; flex-direction: column;">
+        <div class="control-row">
+          <span class="sec-label">Superfície de Ajuste Quadrático por Mínimos Quadrados</span>
+        </div>
+        <div id="plotly-3d-container" class="chart-box plotly-box"></div>
+      </div>
+    </div>
+  </div>
+
   <script>
     let store = []; 
     let vMode = 'S11';
@@ -438,11 +524,19 @@
       'ei': "Permissividade Imaginária (ε'')"
     };
 
+    // Dados Globais do Módulo 3D
+    let csvData = [];
+    let csvHeaders = [];
+
     function setTab(t) {
       document.getElementById('tab-viewer').style.display = t === 'viewer' ? 'block' : 'none';
       document.getElementById('tab-average').style.display = t === 'average' ? 'block' : 'none';
+      document.getElementById('tab-3d').style.display = t === '3d' ? 'block' : 'none';
+      
       document.getElementById('btn-tab-viewer').classList.toggle('active', t === 'viewer');
       document.getElementById('btn-tab-average').classList.toggle('active', t === 'average');
+      document.getElementById('btn-tab-3d').classList.toggle('active', t === '3d');
+      
       if (t === 'average') renderAvgSelectors();
     }
 
@@ -482,8 +576,6 @@
       }).filter(Boolean);
       
       const defaultDisplayName = filename.replace(/\.(s1p|s2p)$/i, '');
-
-      // Cores iniciais em formato Hexadecimal para funcionar nativamente com o <input type="color">
       const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
 
       return data.length ? { 
@@ -763,6 +855,279 @@
       link.download = `${name}.png`;
       link.href = offscreen.toDataURL('image/png');
       link.click();
+    }
+
+    // ==========================================
+    // MÓDULO 3D: LEITURA DE CSV E AJUSTE DE SUPERFÍCIE
+    // ==========================================
+    
+    function handleCSVSelect(files) {
+      if (!files.length) return;
+      const file = files[0];
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        const text = e.target.result;
+        // Parsing simplificado de CSV usando SheetJS para robustez completa com delimitadores
+        const workbook = XLSX.read(text, { type: 'string' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rawJson = XLSX.utils.sheet_to_json(sheet);
+
+        if (!rawJson.length) {
+          alert("O arquivo CSV está vazio ou possui formato inválido.");
+          return;
+        }
+
+        csvData = rawJson;
+        csvHeaders = Object.keys(rawJson[0]);
+
+        populateDropdowns();
+        document.getElementById('content-3d').style.display = 'grid';
+        run3DFitting();
+      };
+      
+      reader.readAsText(file);
+    }
+
+    function populateDropdowns() {
+      const xSel = document.getElementById('select-x');
+      const ySel = document.getElementById('select-y');
+      const zSel = document.getElementById('select-z');
+      const catSel = document.getElementById('select-category');
+
+      // Limpar opções
+      xSel.innerHTML = ""; ySel.innerHTML = ""; zSel.innerHTML = ""; catSel.innerHTML = "<option value=''>Nenhuma (Sem Grupo)</option>";
+
+      csvHeaders.forEach(header => {
+        const option = `<option value="${header}">${header}</option>`;
+        xSel.innerHTML += option;
+        ySel.innerHTML += option;
+        zSel.innerHTML += option;
+        catSel.innerHTML += option;
+      });
+
+      // Seleções padrões inteligentes baseadas nos nomes de colunas do script do usuário
+      const setSelectionIfExists = (elem, matches) => {
+        const found = csvHeaders.find(h => matches.some(m => h.toLowerCase().includes(m)));
+        if (found) elem.value = found;
+      };
+
+      setSelectionIfExists(xSel, ['moisture', 'umidade', 'percent']);
+      setSelectionIfExists(ySel, ['real_permittivity', 'permissividade', 'er', 'measured']);
+      setSelectionIfExists(zSel, ['frequency', 'frequencia', 'freq', 'ghz']);
+      setSelectionIfExists(catSel, ['condition', 'condicao', 'grupo', 'mass', 'height']);
+    }
+
+    function run3DFitting() {
+      const xCol = document.getElementById('select-x').value;
+      const yCol = document.getElementById('select-y').value;
+      const zCol = document.getElementById('select-z').value;
+      const catCol = document.getElementById('select-category').value;
+
+      if (!xCol || !yCol || !zCol) return;
+
+      // Filtrar e converter dados para numéricos
+      const validPoints = csvData.map(row => ({
+        x: parseFloat(row[xCol]),
+        y: parseFloat(row[yCol]),
+        z: parseFloat(row[zCol]),
+        category: catCol ? String(row[catCol] || 'Default') : 'Dados'
+      })).filter(p => !isNaN(p.x) && !isNaN(p.y) && !isNaN(p.z));
+
+      if (validPoints.length < 6) {
+        alert("Quantidade insuficiente de pontos numéricos válidos no arquivo (mínimo de 6 pontos para ajuste quadrático).");
+        return;
+      }
+
+      // Preparação das matrizes de Mínimos Quadrados para o modelo quadrático:
+      // z = a + b*x + c*y + d*x^2 + e*x*y + f*y^2
+      // Matriz de Design A (N x 6)
+      const A = validPoints.map(p => [1, p.x, p.y, p.x**2, p.x * p.y, p.y**2]);
+      const Z = validPoints.map(p => p.z);
+
+      // Obter Coeficientes [a, b, c, d, e, f]
+      const coeffs = solveLeastSquares(A, Z);
+      const [a, b, c, d, e, f_coef] = coeffs;
+
+      // Cálculo de Métricas (R² e RMSE)
+      const predictions = validPoints.map(p => a + b*p.x + c*p.y + d*(p.x**2) + e*p.x*p.y + f_coef*(p.y**2));
+      const zMean = Z.reduce((sum, val) => sum + val, 0) / Z.length;
+      
+      const ssRes = Z.reduce((sum, val, idx) => sum + (val - predictions[idx])**2, 0);
+      const ssTot = Z.reduce((sum, val) => sum + (val - zMean)**2, 0);
+      
+      const r2 = 1 - (ssRes / (ssTot || 1e-12));
+      const rmse = Math.sqrt(ssRes / Z.length);
+
+      // Exibir Métricas e Equação na Tela
+      document.getElementById('val-r2').innerText = r2.toFixed(4);
+      document.getElementById('val-rmse').innerText = rmse.toFixed(4);
+      document.getElementById('equation-text').innerHTML = `
+        z = (${a.toFixed(4)}) <br>
+        + (${b.toFixed(4)}) · x <br>
+        + (${c.toFixed(4)}) · y <br>
+        + (${d.toFixed(4)}) · x² <br>
+        + (${e.toFixed(4)}) · x·y <br>
+        + (${f_coef.toFixed(4)}) · y²
+      `;
+
+      // Gerar a malha (MeshGrid) da superfície 3D baseada nos limites de X e Y
+      const xMin = Math.min(...validPoints.map(p => p.x));
+      const xMax = Math.max(...validPoints.map(p => p.x));
+      const yMin = Math.min(...validPoints.map(p => p.y));
+      const yMax = Math.max(...validPoints.map(p => p.y));
+
+      const steps = 40;
+      const xRange = Array.from({length: steps}, (_, i) => xMin + (i * (xMax - xMin) / (steps - 1)));
+      const yRange = Array.from({length: steps}, (_, i) => yMin + (i * (yMax - yMin) / (steps - 1)));
+
+      // Plotly requer estruturas de matrizes bidimensionais para superfícies (Z_mesh)
+      const zMesh = [];
+      for (let j = 0; j < yRange.length; j++) {
+        const row = [];
+        for (let i = 0; i < xRange.length; i++) {
+          const xVal = xRange[i];
+          const yVal = yRange[j];
+          const zVal = a + b*xVal + c*yVal + d*(xVal**2) + e*xVal*yVal + f_coef*(yVal**2);
+          row.push(zVal);
+        }
+        zMesh.push(row);
+      }
+
+      // Preparar os conjuntos de dados (Traces) para o Plotly
+      const traces = [];
+
+      // 1. Plotar a Superfície de Ajuste
+      traces.push({
+        x: xRange,
+        y: yRange,
+        z: zMesh,
+        type: 'surface',
+        colorscale: 'Viridis',
+        opacity: 0.8,
+        showscale: true,
+        colorbar: { title: zCol, tickcolor: '#e2e8f0', titlefont: { color: '#e2e8f0' } },
+        name: 'Ajuste Quadrático'
+      });
+
+      // 2. Agrupar e plotar os Pontos Dispersos por categoria (Condition / Mass, Height)
+      const groups = {};
+      validPoints.forEach(p => {
+        if (!groups[p.category]) groups[p.category] = { x: [], y: [], z: [] };
+        groups[p.category].x.push(p.x);
+        groups[p.category].y.push(p.y);
+        groups[p.category].z.push(p.z);
+      });
+
+      Object.keys(groups).forEach(groupName => {
+        traces.push({
+          x: groups[groupName].x,
+          y: groups[groupName].y,
+          z: groups[groupName].z,
+          mode: 'markers',
+          type: 'scatter3d',
+          marker: {
+            size: 6,
+            line: { color: 'rgba(0,0,0,0.8)', width: 1 },
+            opacity: 0.9
+          },
+          name: groupName
+        });
+      });
+
+      const layout = {
+        scene: {
+          xaxis: { title: xCol, gridcolor: '#2a3242', backgroundcolor: '#171b26', showbackground: true, color: '#e2e8f0' },
+          yaxis: { title: yCol, gridcolor: '#2a3242', backgroundcolor: '#171b26', showbackground: true, color: '#e2e8f0' },
+          zaxis: { title: zCol, gridcolor: '#2a3242', backgroundcolor: '#171b26', showbackground: true, color: '#e2e8f0' },
+          camera: { eye: { x: 1.5, y: 1.5, z: 1.2 } }
+        },
+        margin: { l: 0, r: 0, b: 0, t: 0 },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        legend: { font: { color: '#e2e8f0' }, yanchor: 'top', y: 0.9 }
+      };
+
+      const config = { responsive: true };
+
+      Plotly.newPlot('plotly-3d-container', traces, layout, config);
+    }
+
+    // Resolutor Linear M*x = B usando Eliminação Gaussiana com Pivoteamento Parcial (Para mínimos quadrados)
+    function solveLeastSquares(A, Z) {
+      const n = A.length;
+      const m = A[0].length; // 6 para o nosso polinômio quadrático de duas variáveis
+      
+      // Computar M = A^T * A (6x6)
+      const M = Array(m).fill(0).map(() => Array(m).fill(0));
+      for (let i = 0; i < m; i++) {
+        for (let j = 0; j < m; j++) {
+          let sum = 0;
+          for (let k = 0; k < n; k++) {
+            sum += A[k][i] * A[k][j];
+          }
+          M[i][j] = sum;
+        }
+      }
+      
+      // Computar B = A^T * Z (6x1)
+      const B = Array(m).fill(0);
+      for (let i = 0; i < m; i++) {
+        let sum = 0;
+        for (let k = 0; k < n; k++) {
+          sum += A[k][i] * Z[k];
+        }
+        B[i] = sum;
+      }
+      
+      // Resolver M * beta = B
+      return gaussianElimination(M, B);
+    }
+
+    function gaussianElimination(A, b) {
+      const n = b.length;
+      const M = A.map((row, i) => [...row, b[i]]);
+      
+      for (let i = 0; i < n; i++) {
+        let maxEl = Math.abs(M[i][i]);
+        let maxRow = i;
+        for (let k = i + 1; k < n; k++) {
+          if (Math.abs(M[k][i]) > maxEl) {
+            maxEl = Math.abs(M[k][i]);
+            maxRow = k;
+          }
+        }
+        
+        const temp = M[maxRow];
+        M[maxRow] = M[i];
+        M[i] = temp;
+        
+        if (Math.abs(M[i][i]) < 1e-12) {
+          // Matriz singular, preencher com vetor nulo ou resolver com pequena regularização
+          M[i][i] = 1e-12;
+        }
+
+        for (let k = i + 1; k < n; k++) {
+          const c = -M[k][i] / M[i][i];
+          for (let j = i; j < n + 1; j++) {
+            if (i === j) {
+              M[k][j] = 0;
+            } else {
+              M[k][j] += c * M[i][j];
+            }
+          }
+        }
+      }
+      
+      const x = Array(n).fill(0);
+      for (let i = n - 1; i >= 0; i--) {
+        x[i] = M[i][n] / M[i][i];
+        for (let k = i - 1; k >= 0; k--) {
+          M[k][n] -= M[k][i] * x[i];
+        }
+      }
+      return x;
     }
   </script>
 </body>
