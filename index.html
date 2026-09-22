@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>S1P / S2P NRW Dielétrico Pro</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
   
@@ -124,13 +125,49 @@
 
     .file-card {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      gap: 12px;
+      gap: 10px 12px;
       padding: 12px 20px;
       background: #1e2533;
       border-radius: 12px;
       margin-bottom: 12px;
       border: 1px solid transparent;
+    }
+    .file-style-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      margin-top: 4px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .file-style-controls label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    .file-style-controls select,
+    .file-style-controls input[type="number"] {
+      background: #0f1117;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      width: auto;
+      min-width: 70px;
+    }
+    .file-style-controls input[type="number"] { width: 56px; }
+    .file-style-controls input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--accent);
     }
 
     .order-actions {
@@ -352,16 +389,56 @@
 <body>
 
   <h1>S11, S21 & Analisador de Permissividade</h1>
-  <p class="subtitle">Extração de dados dielétricos via método Nicolson-Ross-Weir (NRW)</p>
+  <p class="subtitle">S11/S21 + modelo de mistura refrativo (ε' / ε'') para solo</p>
 
   <div class="config-bar">
     <div class="input-field">
-      <label class="sec-label">Espessura da Amostra (d) em mm</label>
-      <input type="number" id="global-thickness" value="10.000" step="0.001" oninput="syncAndRecalculate(this.value)">
+      <label class="sec-label">Modelo de Permissividade</label>
+      <select id="perm-model" onchange="syncAndRecalculate(); updateModelHints()">
+        <option value="refractive">Mistura Refrativa (CRIM)</option>
+        <option value="linear">Linear (ε_d + θ·ε_ω)</option>
+        <option value="topp">Topp (empírico)</option>
+      </select>
     </div>
     <div class="input-field">
-      <label class="sec-label">Sufixo de Referência</label>
-      <input type="text" id="ref-label" placeholder="Ex: Teflon" oninput="render()">
+      <label class="sec-label">θ — Água volumétrica (m³/m³)</label>
+      <input type="number" id="soil-theta" value="0.20" step="0.01" min="0" max="1" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field" id="field-rhob">
+      <label class="sec-label">ρ_b — Densidade aparente (g/cm³)</label>
+      <input type="number" id="soil-rhob" value="1.40" step="0.01" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field" id="field-rhos">
+      <label class="sec-label">ρ_s — Densidade de partícula (g/cm³)</label>
+      <input type="number" id="soil-rhos" value="2.65" step="0.01" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field" id="field-eps">
+      <label class="sec-label">ε_s / ε_d — Solo seco (real)</label>
+      <input type="number" id="soil-eps" value="4.70" step="0.1" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field" id="field-sigma">
+      <label class="sec-label">σ_s — Condutividade (S/m)</label>
+      <input type="number" id="soil-sigma" value="0.05" step="0.001" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field" id="field-temp">
+      <label class="sec-label">Temp. água (°C) — Debye</label>
+      <input type="number" id="soil-temp" value="20" step="1" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field" id="field-topp-a">
+      <label class="sec-label">Topp a (constante)</label>
+      <input type="number" id="topp-a" value="3.03" step="0.01" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field" id="field-topp-b">
+      <label class="sec-label">Topp b (θ)</label>
+      <input type="number" id="topp-b" value="9.3" step="0.1" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field" id="field-topp-c">
+      <label class="sec-label">Topp c (θ²)</label>
+      <input type="number" id="topp-c" value="146" step="1" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field" id="field-topp-d">
+      <label class="sec-label">Topp d (θ³)</label>
+      <input type="number" id="topp-d" value="-76.7" step="0.1" oninput="syncAndRecalculate()">
     </div>
     <div class="input-field">
       <label class="sec-label">Freq Mínima (GHz)</label>
@@ -370,6 +447,22 @@
     <div class="input-field">
       <label class="sec-label">Freq Máxima (GHz)</label>
       <input type="number" id="freq-max" placeholder="Máximo" step="0.1" oninput="updateCharts()">
+    </div>
+    <div class="input-field">
+      <label class="sec-label">S11 Mínimo (dB)</label>
+      <input type="number" id="s11-min" placeholder="Mínimo" step="0.1" oninput="updateCharts()">
+    </div>
+    <div class="input-field">
+      <label class="sec-label">S11 Máximo (dB)</label>
+      <input type="number" id="s11-max" placeholder="Máximo" step="0.1" oninput="updateCharts()">
+    </div>
+    <div class="input-field">
+      <label class="sec-label">S21 Mínimo (dB)</label>
+      <input type="number" id="s21-min" placeholder="Mínimo" step="0.1" oninput="updateCharts()">
+    </div>
+    <div class="input-field">
+      <label class="sec-label">S21 Máximo (dB)</label>
+      <input type="number" id="s21-max" placeholder="Máximo" step="0.1" oninput="updateCharts()">
     </div>
   </div>
 
@@ -401,6 +494,7 @@
           <div class="export-input-group">
             <input type="text" id="main-chart-title" value="Grafico_S_Eps">
             <button class="action-btn" onclick="saveGraph('main-canvas', 'main-chart-title')">Baixar PNG</button>
+            <button class="action-btn" onclick="resetMainZoom()" title="Resetar zoom do gráfico">Reset Zoom</button>
           </div>
         </div>
         <div class="chart-box"><canvas id="main-canvas"></canvas></div>
@@ -583,31 +677,109 @@
         name: filename, 
         displayName: defaultDisplayName, 
         data, 
-        color: randomColor 
+        color: randomColor,
+        // estilo customizável por série
+        pointRadius: 4.5,
+        showPoints: true,
+        borderDash: [],       // [] = sólida; [6,4] = tracejada; [2,2] = pontilhada
+        pointStyle: 'circle'
       } : null;
     }
 
+    function debyeWater(freqHz, tempC) {
+      // Modelo de Debye para água pura (livre)
+      const epsInf = 4.9;
+      const epsStatic = 87.74 - 0.40008 * tempC + 9.398e-4 * tempC * tempC - 1.410e-6 * tempC * tempC * tempC;
+      const tau = (1.110e-10 - 3.824e-12 * tempC + 6.938e-14 * tempC * tempC - 5.096e-16 * tempC * tempC * tempC); // s
+      const omega = 2 * Math.PI * freqHz;
+      const denom = 1 + (omega * tau) * (omega * tau);
+      const epsWReal = epsInf + (epsStatic - epsInf) / denom;
+      const epsWImag = (epsStatic - epsInf) * (omega * tau) / denom;
+      return { re: epsWReal, im: epsWImag };
+    }
+
+    function updateModelHints() {
+      const model = document.getElementById('perm-model').value;
+      // Campos relevantes por modelo
+      const show = (id, visible) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = visible ? '' : 'none';
+      };
+      // Mistura Refrativa: precisa de ρ_b, ρ_s, ε_s, σ_s, T
+      // Linear: precisa de ε_d, σ_s, T
+      // Topp: só θ (ε' empírico); ε'' ainda usa Debye+σ
+      show('field-rhob',   model === 'refractive');
+      show('field-rhos',   model === 'refractive');
+      show('field-eps',    model === 'refractive' || model === 'linear');
+      show('field-sigma',  true);
+      show('field-temp',   true);
+      show('field-topp-a', model === 'topp');
+      show('field-topp-b', model === 'topp');
+      show('field-topp-c', model === 'topp');
+      show('field-topp-d', model === 'topp');
+    }
+
     function runNRWCalculations() {
-      const d = parseFloat(document.getElementById('global-thickness').value) / 1000;
+      // Três modelos disponíveis (imagem do artigo):
+      // 1) Mistura Refrativa (CRIM):
+      //    ε'  = [1 + (ρ_b/ρ_s)(√ε_s − 1) + θ √ε_ω']²
+      //    ε'' = θ (σ_s/(2πf ε_0) + ε_ω'')
+      // 2) Linear:
+      //    ε'  = ε_d + θ · ε_ω'
+      //    ε'' = θ · (σ_s/(2πf ε_0) + ε_ω'')
+      // 3) Topp (empírico, só parte real clássica):
+      //    ε'  = 3.03 + 9.3 θ + 146 θ² − 76.7 θ³
+      //    ε'' = θ (σ_s/(2πf ε_0) + ε_ω'')   (mantido para ter parte imaginária)
+      const model = document.getElementById('perm-model').value || 'refractive';
+      const theta = parseFloat(document.getElementById('soil-theta').value) || 0;
+      const rhob  = parseFloat(document.getElementById('soil-rhob').value)  || 1.4;
+      const rhos  = parseFloat(document.getElementById('soil-rhos').value)  || 2.65;
+      const epsS  = parseFloat(document.getElementById('soil-eps').value)   || 4.7; // ε_s ou ε_d
+      const sigma = parseFloat(document.getElementById('soil-sigma').value) || 0.05;
+      const tempC = parseFloat(document.getElementById('soil-temp').value)  || 20;
+      const EPS0  = 8.854187817e-12;
+
       store.forEach(file => {
         file.data.forEach(pt => {
-          const s11 = pt.s11; const s21 = pt.s21;
-          pt.s11db = 20 * Math.log10(Math.sqrt(s11.re**2 + s11.im**2) || 1e-12);
-          if (!s21) { pt.er = 0; pt.ei = 0; pt.s21db = -100; return; }
-          pt.s21db = 20 * Math.log10(Math.sqrt(s21.re**2 + s21.im**2) || 1e-12);
-          
-          const s11sq = cmul(s11, s11); const s21sq = cmul(s21, s21);
-          const X = cdiv({ re: s11sq.re - s21sq.re + 1, im: s11sq.im - s21sq.im }, { re: 2 * s11.re, im: 2 * s11.im });
-          const rootX = csqrt({ re: X.re**2 - X.im**2 - 1, im: 2 * X.re * X.im });
-          let gamma = { re: X.re + rootX.re, im: X.im + rootX.im };
-          if (cabs(gamma) > 1) gamma = { re: X.re - rootX.re, im: X.im - rootX.im };
-          const sSum = { re: s11.re + s21.re, im: s11.im + s21.im };
-          const T = cdiv({ re: sSum.re - gamma.re, im: sSum.im - gamma.im }, { re: 1 - (sSum.re * gamma.re - sSum.im * gamma.im), im: -(sSum.re * gamma.im + sSum.im * gamma.re) });
-          const invT = cdiv({re:1, im:0}, T);
-          const lnInvT = { re: Math.log(cabs(invT)), im: Math.atan2(invT.im, invT.re) };
-          const factor = -Math.pow((SPEED_LIGHT / pt.freq) / (2 * Math.PI * d), 2);
-          const lnSq = cmul(lnInvT, lnInvT);
-          pt.er = lnSq.re * factor; pt.ei = lnSq.im * factor;
+          const s11 = pt.s11;
+          const s21 = pt.s21;
+          pt.s11db = 20 * Math.log10(Math.sqrt(s11.re * s11.re + s11.im * s11.im) || 1e-12);
+          if (!s21) {
+            pt.s21db = -100;
+          } else {
+            pt.s21db = 20 * Math.log10(Math.sqrt(s21.re * s21.re + s21.im * s21.im) || 1e-12);
+          }
+
+          const epsW = debyeWater(pt.freq, tempC);
+          const condTerm = sigma / (2 * Math.PI * pt.freq * EPS0);
+
+          if (model === 'linear') {
+            // ε(θ,f) = ε_d + θ · ε_ω(f)
+            pt.er = epsS + theta * epsW.re;
+            pt.ei = theta * (condTerm + epsW.im);
+          } else if (model === 'topp') {
+            // Topp parametrizável: ε' = a + b·θ + c·θ² + d·θ³
+            // Valores padrão = Topp clássico (a=3.03, b=9.3, c=146, d=-76.7)
+            const a = parseFloat(document.getElementById('topp-a').value);
+            const b = parseFloat(document.getElementById('topp-b').value);
+            const c = parseFloat(document.getElementById('topp-c').value);
+            const d = parseFloat(document.getElementById('topp-d').value);
+            const aa = Number.isFinite(a) ? a : 3.03;
+            const bb = Number.isFinite(b) ? b : 9.3;
+            const cc = Number.isFinite(c) ? c : 146.0;
+            const dd = Number.isFinite(d) ? d : -76.7;
+            const t = theta;
+            pt.er = aa + bb * t + cc * t * t + dd * t * t * t;
+            // ε'' via Debye + condutividade
+            pt.ei = theta * (condTerm + epsW.im);
+          } else {
+            // Mistura Refrativa (padrão)
+            const sqrtEpsW = Math.sqrt(Math.max(epsW.re, 0));
+            const sqrtEpsS = Math.sqrt(Math.max(epsS, 0));
+            const term = 1 + (rhob / rhos) * (sqrtEpsS - 1) + theta * sqrtEpsW;
+            pt.er = term * term;
+            pt.ei = theta * (condTerm + epsW.im);
+          }
         });
       });
     }
@@ -620,7 +792,9 @@
     function render() {
       const list = document.getElementById('file-list-container');
       
-      list.innerHTML = store.map((f, i) => `
+      list.innerHTML = store.map((f, i) => {
+        const dashVal = Array.isArray(f.borderDash) ? (f.borderDash.length === 0 ? 'solid' : f.borderDash.join(',')) : 'solid';
+        return `
         <div class="file-card">
           <div class="order-actions">
             <button class="btn-order" onclick="moveUp(${i})" ${i === 0 ? 'disabled' : ''} title="Subir na legenda">▲</button>
@@ -632,8 +806,30 @@
           <input type="text" class="file-rename-input" value="${f.displayName}" oninput="renameFile(${i}, this.value)" title="Clique para editar o rótulo do gráfico">
           <span style="color: var(--text-secondary); font-size:12px;">(${f.name})</span>
           <button class="btn-remove" onclick="removeFile(${i})">Remover</button>
-        </div>
-      `).join('');
+          <div class="file-style-controls">
+            <label title="Mostrar ou ocultar marcadores">
+              <input type="checkbox" ${f.showPoints !== false ? 'checked' : ''} onchange="updateFileStyle(${i}, 'showPoints', this.checked)"> Pontos
+            </label>
+            <label>Tamanho
+              <input type="number" min="0" max="20" step="0.5" value="${f.pointRadius ?? 4.5}" onchange="updateFileStyle(${i}, 'pointRadius', parseFloat(this.value))">
+            </label>
+            <label>Estilo ponto
+              <select onchange="updateFileStyle(${i}, 'pointStyle', this.value)">
+                ${['circle','triangle','rect','rectRot','cross','crossRot','star','dash','line'].map(s =>
+                  `<option value="${s}" ${(f.pointStyle||'circle')===s?'selected':''}>${s}</option>`).join('')}
+              </select>
+            </label>
+            <label>Linha
+              <select onchange="updateFileStyle(${i}, 'borderDash', this.value)">
+                <option value="solid" ${dashVal==='solid'?'selected':''}>Sólida</option>
+                <option value="6,4" ${dashVal==='6,4'?'selected':''}>Tracejada</option>
+                <option value="2,2" ${dashVal==='2,2'?'selected':''}>Pontilhada</option>
+                <option value="8,4,2,4" ${dashVal==='8,4,2,4'?'selected':''}>Traço-ponto</option>
+              </select>
+            </label>
+          </div>
+        </div>`;
+      }).join('');
 
       if (store.length) { 
         document.getElementById('viewer-main-content').style.display='block'; 
@@ -648,6 +844,25 @@
     function updateFileColor(i, newColor) {
       store[i].color = newColor;
       updateCharts();
+    }
+
+    function updateFileStyle(i, prop, value) {
+      if (prop === 'borderDash') {
+        store[i].borderDash = (value === 'solid' || !value) ? [] : value.split(',').map(Number);
+      } else if (prop === 'pointRadius') {
+        store[i].pointRadius = Number.isFinite(value) ? value : 4.5;
+      } else if (prop === 'showPoints') {
+        store[i].showPoints = !!value;
+      } else if (prop === 'pointStyle') {
+        store[i].pointStyle = value || 'circle';
+      }
+      updateCharts();
+    }
+
+    function resetMainZoom() {
+      if (mainChart && typeof mainChart.resetZoom === 'function') {
+        mainChart.resetZoom();
+      }
     }
 
     function moveUp(i) {
@@ -700,27 +915,56 @@
       }
     }
 
+    function getOptionalNumber(id) {
+      const value = parseFloat(document.getElementById(id).value);
+      return Number.isFinite(value) ? value : undefined;
+    }
+
+    function getYAxisLimits(mode) {
+      if (mode === 'S11') {
+        return {
+          min: getOptionalNumber('s11-min'),
+          max: getOptionalNumber('s11-max')
+        };
+      }
+
+      if (mode === 'S21') {
+        return {
+          min: getOptionalNumber('s21-min'),
+          max: getOptionalNumber('s21-max')
+        };
+      }
+
+      return { min: undefined, max: undefined };
+    }
+
     function updateMainChart() {
       const ctx = document.getElementById('main-canvas').getContext('2d');
       if (mainChart) mainChart.destroy();
 
       const minFreq = parseFloat(document.getElementById('freq-min').value) || undefined;
       const maxFreq = parseFloat(document.getElementById('freq-max').value) || undefined;
+      const yLimits = getYAxisLimits(vMode);
 
       mainChart = new Chart(ctx, {
         type: 'line',
         data: { 
-          datasets: store.map((f, idx) => ({ 
-            label: f.displayName, 
-            data: f.data.map(d => ({ x: d.freq / 1e9, y: vMode === 'S11' ? d.s11db : vMode === 'S21' ? d.s21db : vMode === 'er' ? d.er : d.ei })), 
-            borderColor: f.color, 
-            backgroundColor: f.color,
-            borderWidth: 2,
-            pointStyle: POINT_STYLES[idx % POINT_STYLES.length],
-            pointRadius: 4.5,
-            pointHoverRadius: 7,
-            showLine: true
-          })) 
+          datasets: store.map((f) => {
+            const showPts = f.showPoints !== false;
+            const radius = showPts ? (f.pointRadius ?? 4.5) : 0;
+            return {
+              label: f.displayName, 
+              data: f.data.map(d => ({ x: d.freq / 1e9, y: vMode === 'S11' ? d.s11db : vMode === 'S21' ? d.s21db : vMode === 'er' ? d.er : d.ei })), 
+              borderColor: f.color, 
+              backgroundColor: f.color,
+              borderWidth: 2,
+              borderDash: Array.isArray(f.borderDash) ? f.borderDash : [],
+              pointStyle: f.pointStyle || 'circle',
+              pointRadius: radius,
+              pointHoverRadius: showPts ? Math.max(radius + 2, 6) : 0,
+              showLine: true
+            };
+          }) 
         },
         options: { 
           responsive: true, 
@@ -737,7 +981,9 @@
             y: { 
               title: { display: true, text: Y_AXIS_LABELS[vMode], color: '#1e293b', font: { weight: 'bold', size: 13 } },
               grid: { color: '#e2e8f0' },
-              ticks: { color: '#1e293b' }
+              ticks: { color: '#1e293b' },
+              min: yLimits.min,
+              max: yLimits.max
             } 
           },
           plugins: { 
@@ -748,7 +994,22 @@
                 boxWidth: 8,
                 padding: 15
               } 
-            } 
+            },
+            zoom: {
+              pan: { enabled: true, mode: 'xy', modifierKey: 'ctrl' },
+              zoom: {
+                wheel: { enabled: true },
+                pinch: { enabled: true },
+                drag: {
+                  enabled: true,
+                  backgroundColor: 'rgba(59,130,246,0.15)',
+                  borderColor: 'rgba(59,130,246,0.6)',
+                  borderWidth: 1
+                },
+                mode: 'xy'
+              },
+              limits: { x: { min: 'original', max: 'original' }, y: { min: 'original', max: 'original' } }
+            }
           }
         }
       });
@@ -789,6 +1050,7 @@
 
       const minFreq = parseFloat(document.getElementById('freq-min').value) || undefined;
       const maxFreq = parseFloat(document.getElementById('freq-max').value) || undefined;
+      const yLimits = getYAxisLimits(aMode);
 
       const ctx = document.getElementById('avg-canvas').getContext('2d');
       if (avgChart) avgChart.destroy();
@@ -820,12 +1082,29 @@
             y: {
               title: { display: true, text: 'Média de ' + Y_AXIS_LABELS[aMode], color: '#1e293b', font: { weight: 'bold', size: 13 } },
               grid: { color: '#e2e8f0' },
-              ticks: { color: '#1e293b' }
+              ticks: { color: '#1e293b' },
+              min: yLimits.min,
+              max: yLimits.max
             }
           },
           plugins: {
             legend: {
               labels: { color: '#1e293b' }
+            },
+            zoom: {
+              pan: { enabled: true, mode: 'xy', modifierKey: 'ctrl' },
+              zoom: {
+                wheel: { enabled: true },
+                pinch: { enabled: true },
+                drag: {
+                  enabled: true,
+                  backgroundColor: 'rgba(59,130,246,0.15)',
+                  borderColor: 'rgba(59,130,246,0.6)',
+                  borderWidth: 1
+                },
+                mode: 'xy'
+              },
+              limits: { x: { min: 'original', max: 'original' }, y: { min: 'original', max: 'original' } }
             }
           }
         }
@@ -1128,6 +1407,13 @@
         }
       }
       return x;
+    }
+
+    // Inicializa visibilidade dos campos conforme o modelo selecionado
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', updateModelHints);
+    } else {
+      updateModelHints();
     }
   </script>
 </body>
