@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S1P / S2P NRW Dielétrico Pro</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+  
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #171b26;
+      --border: #2a3242;
+      --text: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --accent: #3b82f6;
+      --danger: #ef4444;
+      --success: #10b981;
+      --warning: #facc15;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    h1 { font-size: 28px; font-weight: 600; color: white; margin-bottom: 6px; }
+    .subtitle { color: var(--text-secondary); font-size: 15.5px; margin-bottom: 28px; }
+
+    .tabs {
+      display: flex;
+      background: var(--panel);
+      border-radius: 12px;
+      padding: 6px;
+      width: fit-content;
+      margin-bottom: 28px;
+      border: 1px solid var(--border);
+    }
+
+    .tab {
+      padding: 11px 28px;
+      border-radius: 8px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      font-size: 14.5px;
+    }
+
+    .tab.active {
+      background: var(--accent);
+      color: white;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      margin-bottom: 24px;
+    }
+
+    .sec-label {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .config-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      background: #1e2533;
+      padding: 20px;
+      border-radius: 12px;
+      border-left: 5px solid var(--accent);
+      margin-bottom: 25px;
+    }
+
+    .input-field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    input[type="number"], input[type="text"], select {
+      background: #0f1117;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus { outline: none; border-color: var(--accent); }
+
+    .drop-zone {
+      position: relative;
+      border: 2px dashed #475569;
+      border-radius: 14px;
+      padding: 60px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: rgba(23, 27, 38, 0.6);
+    }
+
+    .drop-zone:hover {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.08);
+    }
+
+    .file-card {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 12px;
+      padding: 12px 20px;
+      background: #1e2533;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      border: 1px solid transparent;
+    }
+    .file-style-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      margin-top: 4px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .file-style-controls label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    .file-style-controls select,
+    .file-style-controls input[type="number"] {
+      background: #0f1117;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      width: auto;
+      min-width: 70px;
+    }
+    .file-style-controls input[type="number"] { width: 56px; }
+    .file-style-controls input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--accent);
+    }
+
+    .order-actions {
+      display: flex;
+      gap: 4px;
+      margin-right: 8px;
+    }
+
+    .btn-order {
+      background: #0f1117;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .btn-order:hover:not(:disabled) {
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .btn-order:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .file-rename-input {
+      background: #0f1117 !important;
+      border: 1px solid var(--border) !important;
+      color: white !important;
+      padding: 6px 12px !important;
+      border-radius: 6px !important;
+      font-size: 13.5px !important;
+      width: 250px;
+    }
+
+    .color-picker-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .color-picker {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background: transparent;
+      border: none;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+    }
+
+    .color-picker::-webkit-color-swatch {
+      border-radius: 50%;
+      border: 2px solid var(--border);
+    }
+
+    .color-picker::-moz-color-swatch {
+      border-radius: 50%;
+      border: 2px solid var(--border);
+    }
+    
+    .btn-remove {
+      margin-left: auto;
+      background: transparent;
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .btn-remove:hover { background: var(--danger); color: white; }
+
+    .chart-box {
+      position: relative;
+      width: 100%;
+      height: 500px;
+      margin: 20px 0;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 15px;
+      border: 1px solid var(--border);
+    }
+
+    /* Ajuste para o container do Plotly herdar o fundo escuro se desejado, ou branco */
+    .plotly-box {
+      background: #1e2533 !important;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .control-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    .opt-group {
+      display: flex;
+      background: #0f1117;
+      padding: 5px;
+      border-radius: 10px;
+      gap: 4px;
+    }
+
+    .opt-btn {
+      padding: 8px 18px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      border-radius: 7px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .opt-btn.active { background: var(--accent); color: white; }
+
+    .table-container {
+      overflow-x: auto;
+      max-height: 600px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #1e2533;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); }
+    th { background: #242d3d; position: sticky; top: 0; z-index: 10; color: var(--text-secondary); }
+
+    .action-btn {
+      padding: 10px 20px;
+      background: #1e2533;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .action-btn:hover { border-color: var(--accent); background: #242d3d; }
+
+    .selector-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .select-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      background: #1e2533;
+      border-radius: 10px;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+
+    .select-item.checked { border-color: var(--accent); background: rgba(59, 130, 246, 0.05); }
+
+    .export-input-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #0f1117;
+      padding: 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    
+    .export-input-group input {
+      border: none !important;
+      background: transparent !important;
+      color: white;
+      padding: 4px 8px;
+      font-size: 13px;
+    }
+
+    /* Layout do painel 3D */
+    .grid-3d-layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+    }
+    @media(max-width: 900px) {
+      .grid-3d-layout { grid-template-columns: 1fr; }
+    }
+
+    .equation-card {
+      background: #0f1117;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+      font-family: monospace;
+      color: var(--warning);
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>S11, S21 & Analisador de Permissividade</h1>
+  <p class="subtitle">S11/S21 + modelo de mistura refrativo (ε' / ε'') para solo</p>
+
+  <div class="config-bar">
+    <div class="input-field">
+      <label class="sec-label">Modelo de Permissividade</label>
+      <select id="perm-model" onchange="syncAndRecalculate(); updateModelHints()">
+        <option value="refractive">Mistura Refrativa (CRIM)</option>
+        <option value="linear">Linear (ε_d + θ·ε_ω)</option>
+        <option value="topp">Topp (empírico)</option>
+      </select>
+    </div>
+    <div class="input-field">
+      <label class="sec-label">θ — Água volumétrica (m³/m³)</label>
+      <input type="number" id="soil-theta" value="0.20" step="0.01" min="0" max="1" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field" id="field-rhob">
+      <label class="sec-label">ρ_b — Densidade aparente (g/cm³)</label>
+      <input type="number" id="soil-rhob" value="1.40" step="0.01" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field" id="field-rhos">
+      <label class="sec-label">ρ_s — Densidade de partícula (g/cm³)</label>
+      <input type="number" id="soil-rhos" value="2.65" step="0.01" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field" id="field-eps">
+      <label class="sec-label">ε_s / ε_d — Solo seco (real)</label>
+      <input type="number" id="soil-eps" value="4.70" step="0.1" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field" id="field-sigma">
+      <label class="sec-label">σ_s — Condutividade (S/m)</label>
+      <input type="number" id="soil-sigma" value="0.05" step="0.001" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field" id="field-temp">
+      <label class="sec-label">Temp. água (°C) — Debye</label>
+      <input type="number" id="soil-temp" value="20" step="1" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field" id="field-topp-a">
+      <label class="sec-label">Topp a (constante)</label>
+      <input type="number" id="topp-a" value="3.03" step="0.01" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field" id="field-topp-b">
+      <label class="sec-label">Topp b (θ)</label>
+      <input type="number" id="topp-b" value="9.3" step="0.1" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field" id="field-topp-c">
+      <label class="sec-label">Topp c (θ²)</label>
+      <input type="number" id="topp-c" value="146" step="1" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field" id="field-topp-d">
+      <label class="sec-label">Topp d (θ³)</label>
+      <input type="number" id="topp-d" value="-76.7" step="0.1" oninput="syncAndRecalculate()">
+    </div>
+    <div class="input-field">
+      <label class="sec-label">Freq Mínima (GHz)</label>
+      <input type="number" id="freq-min" placeholder="Mínimo" step="0.1" oninput="updateCharts()">
+    </div>
+    <div class="input-field">
+      <label class="sec-label">Freq Máxima (GHz)</label>
+      <input type="number" id="freq-max" placeholder="Máximo" step="0.1" oninput="updateCharts()">
+    </div>
+    <div class="input-field">
+      <label class="sec-label">S11 Mínimo (dB)</label>
+      <input type="number" id="s11-min" placeholder="Mínimo" step="0.1" oninput="updateCharts()">
+    </div>
+    <div class="input-field">
+      <label class="sec-label">S11 Máximo (dB)</label>
+      <input type="number" id="s11-max" placeholder="Máximo" step="0.1" oninput="updateCharts()">
+    </div>
+    <div class="input-field">
+      <label class="sec-label">S21 Mínimo (dB)</label>
+      <input type="number" id="s21-min" placeholder="Mínimo" step="0.1" oninput="updateCharts()">
+    </div>
+    <div class="input-field">
+      <label class="sec-label">S21 Máximo (dB)</label>
+      <input type="number" id="s21-max" placeholder="Máximo" step="0.1" oninput="updateCharts()">
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" id="btn-tab-viewer" onclick="setTab('viewer')">Visualizador Individual</div>
+    <div class="tab" id="btn-tab-average" onclick="setTab('average')">Média de Amostras</div>
+    <div class="tab" id="btn-tab-3d" onclick="setTab('3d')">Ajuste de Superfície 3D</div>
+  </div>
+
+  <div id="tab-viewer">
+    <div class="panel">
+      <div class="sec-label">Upload de arquivos .s1p ou .s2p</div>
+      <div class="drop-zone" onclick="document.getElementById('file-in').click()">
+        <input type="file" id="file-in" multiple hidden accept=".s1p,.s2p" onchange="handleFileSelect(this.files)">
+        <p>Arraste os seus arquivos ou clique para navegar</p>
+      </div>
+      <div id="file-list-container" style="margin-top: 20px;"></div>
+    </div>
+
+    <div id="viewer-main-content" style="display:none">
+      <div class="panel">
+        <div class="control-row">
+          <div class="opt-group">
+            <button class="opt-btn active" id="v-mode-s11" onclick="setViewMode('S11')">S11 (dB)</button>
+            <button class="opt-btn" id="v-mode-s21" onclick="setViewMode('S21')">S21 (dB)</button>
+            <button class="opt-btn" id="v-mode-er" onclick="setViewMode('er')">ε' (Real)</button>
+            <button class="opt-btn" id="v-mode-ei" onclick="setViewMode('ei')">ε'' (Imag)</button>
+          </div>
+          <div class="export-input-group">
+            <input type="text" id="main-chart-title" value="Grafico_S_Eps">
+            <button class="action-btn" onclick="saveGraph('main-canvas', 'main-chart-title')">Baixar PNG</button>
+            <button class="action-btn" onclick="resetMainZoom()" title="Resetar zoom do gráfico">Reset Zoom</button>
+          </div>
+        </div>
+        <div class="chart-box"><canvas id="main-canvas"></canvas></div>
+      </div>
+
+      <div class="panel">
+        <div class="control-row">
+          <span class="sec-label">Tabela de Dados Completa</span>
+          <div class="export-input-group">
+            <input type="text" id="main-table-filename" value="Dados_NRW_Export">
+            <button class="action-btn" onclick="saveExcel('table-data', 'main-table-filename')" style="color:var(--success);">Exportar Excel</button>
+          </div>
+        </div>
+        <div class="table-container"><table id="table-data"></table></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-average" style="display:none">
+    <div class="panel">
+      <div class="sec-label">Selecione as amostras para a média</div>
+      <div id="avg-selector-list" class="selector-grid"></div>
+    </div>
+
+    <div id="average-main-content" style="display:none">
+      <div class="panel">
+        <div class="control-row">
+          <div class="opt-group">
+            <button class="opt-btn active" id="a-mode-s11" onclick="setAvgMode('S11')">Média S11</button>
+            <button class="opt-btn" id="a-mode-s21" onclick="setAvgMode('S21')">Média S21</button>
+            <button class="opt-btn" id="a-mode-er" onclick="setAvgMode('er')">Média ε'</button>
+            <button class="opt-btn" id="a-mode-ei" onclick="setAvgMode('ei')">Média ε''</button>
+          </div>
+        </div>
+        <div class="chart-box"><canvas id="avg-canvas"></canvas></div>
+      </div>
+
+      <div class="panel">
+        <div class="control-row">
+          <span class="sec-label">Tabela de Resultados Médios</span>
+          <div class="export-input-group">
+            <input type="text" id="avg-table-filename" value="Medias_NRW_Calculadas">
+            <button class="action-btn" onclick="saveExcel('table-avg', 'avg-table-filename')" style="color:var(--success);">Exportar Excel</button>
+          </div>
+        </div>
+        <div class="table-container"><table id="table-avg"></table></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-3d" style="display:none">
+    <div class="panel">
+      <div class="sec-label">Upload do arquivo de medições (.csv)</div>
+      <div class="drop-zone" onclick="document.getElementById('csv-file-in').click()">
+        <input type="file" id="csv-file-in" hidden accept=".csv" onchange="handleCSVSelect(this.files)">
+        <p>Arraste seu CSV de dados experimentais ou clique para navegar</p>
+      </div>
+    </div>
+
+    <div id="content-3d" style="display: none;" class="grid-3d-layout">
+      <div class="panel" style="margin-bottom: 0;">
+        <span class="sec-label">Mapeamento dos Eixos</span>
+        
+        <div class="input-field" style="margin-bottom: 15px;">
+          <label>Eixo X (Independente 1)</label>
+          <select id="select-x" onchange="run3DFitting()"></select>
+        </div>
+
+        <div class="input-field" style="margin-bottom: 15px;">
+          <label>Eixo Y (Independente 2)</label>
+          <select id="select-y" onchange="run3DFitting()"></select>
+        </div>
+
+        <div class="input-field" style="margin-bottom: 15px;">
+          <label>Eixo Z (Dependente / Alvo)</label>
+          <select id="select-z" onchange="run3DFitting()"></select>
+        </div>
+
+        <div class="input-field" style="margin-bottom: 15px;">
+          <label>Coluna de Categorias (Legenda)</label>
+          <select id="select-category" onchange="run3DFitting()"></select>
+        </div>
+
+        <span class="sec-label" style="margin-top: 25px;">Métricas de Ajuste</span>
+        <div style="font-size: 15px; font-weight: 500; color: white;">
+          R²: <span id="val-r2" style="color: var(--success);">--</span><br>
+          RMSE: <span id="val-rmse" style="color: var(--danger);">--</span>
+        </div>
+
+        <span class="sec-label" style="margin-top: 20px;">Modelo Quadrático</span>
+        <div style="font-size: 12px; color: var(--text-secondary);">
+          z = a + b·x + c·y + d·x² + e·x·y + f·y²
+        </div>
+        <div id="equation-text" class="equation-card">Aguardando dados...</div>
+      </div>
+
+      <div class="panel" style="margin-bottom: 0; display: flex; flex-direction: column;">
+        <div class="control-row">
+          <span class="sec-label">Superfície de Ajuste Quadrático por Mínimos Quadrados</span>
+        </div>
+        <div id="plotly-3d-container" class="chart-box plotly-box"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let store = []; 
+    let vMode = 'S11';
+    let aMode = 'S11';
+    let selectedAvgIndices = new Set();
+    let mainChart = null;
+    let avgChart = null;
+    const SPEED_LIGHT = 299792458;
+
+    const POINT_STYLES = ['circle', 'triangle', 'rect', 'rectRot', 'cross', 'crossRot', 'star'];
+
+    const Y_AXIS_LABELS = {
+      'S11': 'S11 (dB)',
+      'S21': 'S21 (dB)',
+      'er': "Permissividade Real (ε')",
+      'ei': "Permissividade Imaginária (ε'')"
+    };
+
+    // Dados Globais do Módulo 3D
+    let csvData = [];
+    let csvHeaders = [];
+
+    function setTab(t) {
+      document.getElementById('tab-viewer').style.display = t === 'viewer' ? 'block' : 'none';
+      document.getElementById('tab-average').style.display = t === 'average' ? 'block' : 'none';
+      document.getElementById('tab-3d').style.display = t === '3d' ? 'block' : 'none';
+      
+      document.getElementById('btn-tab-viewer').classList.toggle('active', t === 'viewer');
+      document.getElementById('btn-tab-average').classList.toggle('active', t === 'average');
+      document.getElementById('btn-tab-3d').classList.toggle('active', t === '3d');
+      
+      if (t === 'average') renderAvgSelectors();
+    }
+
+    function syncAndRecalculate() {
+      runNRWCalculations();
+      render();
+    }
+
+    function handleFileSelect(files) {
+      Array.from(files).forEach(f => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const parsed = parseSParameter(e.target.result, f.name);
+          if (parsed) { store.push(parsed); runNRWCalculations(); render(); }
+        };
+        reader.readAsText(f);
+      });
+    }
+
+    function parseSParameter(text, filename) {
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('!'));
+      let mult = 1e9;
+      const header = lines.find(l => l.startsWith('#'));
+      if (header) {
+        const h = header.toLowerCase();
+        if (h.includes('mhz')) mult = 1e6;
+        else if (h.includes('hz') && !h.includes('ghz')) mult = 1;
+      }
+      const data = lines.filter(l => !l.startsWith('#')).map(line => {
+        const cols = line.split(/\s+/).map(Number);
+        if (cols.length < 3 || isNaN(cols[0])) return null;
+        return {
+          freq: cols[0] * mult,
+          s11: { re: cols[1], im: cols[2] },
+          s21: cols.length >= 5 ? { re: cols[3], im: cols[4] } : null
+        };
+      }).filter(Boolean);
+      
+      const defaultDisplayName = filename.replace(/\.(s1p|s2p)$/i, '');
+      const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+
+      return data.length ? { 
+        id: Date.now()+Math.random(), 
+        name: filename, 
+        displayName: defaultDisplayName, 
+        data, 
+        color: randomColor,
+        // estilo customizável por série
+        pointRadius: 4.5,
+        showPoints: true,
+        borderDash: [],       // [] = sólida; [6,4] = tracejada; [2,2] = pontilhada
+        pointStyle: 'circle'
+      } : null;
+    }
+
+    function debyeWater(freqHz, tempC) {
+      // Modelo de Debye para água pura (livre)
+      const epsInf = 4.9;
+      const epsStatic = 87.74 - 0.40008 * tempC + 9.398e-4 * tempC * tempC - 1.410e-6 * tempC * tempC * tempC;
+      const tau = (1.110e-10 - 3.824e-12 * tempC + 6.938e-14 * tempC * tempC - 5.096e-16 * tempC * tempC * tempC); // s
+      const omega = 2 * Math.PI * freqHz;
+      const denom = 1 + (omega * tau) * (omega * tau);
+      const epsWReal = epsInf + (epsStatic - epsInf) / denom;
+      const epsWImag = (epsStatic - epsInf) * (omega * tau) / denom;
+      return { re: epsWReal, im: epsWImag };
+    }
+
+    function updateModelHints() {
+      const model = document.getElementById('perm-model').value;
+      // Campos relevantes por modelo
+      const show = (id, visible) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = visible ? '' : 'none';
+      };
+      // Mistura Refrativa: precisa de ρ_b, ρ_s, ε_s, σ_s, T
+      // Linear: precisa de ε_d, σ_s, T
+      // Topp: só θ (ε' empírico); ε'' ainda usa Debye+σ
+      show('field-rhob',   model === 'refractive');
+      show('field-rhos',   model === 'refractive');
+      show('field-eps',    model === 'refractive' || model === 'linear');
+      show('field-sigma',  true);
+      show('field-temp',   true);
+      show('field-topp-a', model === 'topp');
+      show('field-topp-b', model === 'topp');
+      show('field-topp-c', model === 'topp');
+      show('field-topp-d', model === 'topp');
+    }
+
+    function runNRWCalculations() {
+      // Três modelos disponíveis (imagem do artigo):
+      // 1) Mistura Refrativa (CRIM):
+      //    ε'  = [1 + (ρ_b/ρ_s)(√ε_s − 1) + θ √ε_ω']²
+      //    ε'' = θ (σ_s/(2πf ε_0) + ε_ω'')
+      // 2) Linear:
+      //    ε'  = ε_d + θ · ε_ω'
+      //    ε'' = θ · (σ_s/(2πf ε_0) + ε_ω'')
+      // 3) Topp (empírico, só parte real clássica):
+      //    ε'  = 3.03 + 9.3 θ + 146 θ² − 76.7 θ³
+      //    ε'' = θ (σ_s/(2πf ε_0) + ε_ω'')   (mantido para ter parte imaginária)
+      const model = document.getElementById('perm-model').value || 'refractive';
+      const theta = parseFloat(document.getElementById('soil-theta').value) || 0;
+      const rhob  = parseFloat(document.getElementById('soil-rhob').value)  || 1.4;
+      const rhos  = parseFloat(document.getElementById('soil-rhos').value)  || 2.65;
+      const epsS  = parseFloat(document.getElementById('soil-eps').value)   || 4.7; // ε_s ou ε_d
+      const sigma = parseFloat(document.getElementById('soil-sigma').value) || 0.05;
+      const tempC = parseFloat(document.getElementById('soil-temp').value)  || 20;
+      const EPS0  = 8.854187817e-12;
+
+      store.forEach(file => {
+        file.data.forEach(pt => {
+          const s11 = pt.s11;
+          const s21 = pt.s21;
+          pt.s11db = 20 * Math.log10(Math.sqrt(s11.re * s11.re + s11.im * s11.im) || 1e-12);
+          if (!s21) {
+            pt.s21db = -100;
+          } else {
+            pt.s21db = 20 * Math.log10(Math.sqrt(s21.re * s21.re + s21.im * s21.im) || 1e-12);
+          }
+
+          const epsW = debyeWater(pt.freq, tempC);
+          const condTerm = sigma / (2 * Math.PI * pt.freq * EPS0);
+
+          if (model === 'linear') {
+            // ε(θ,f) = ε_d + θ · ε_ω(f)
+            pt.er = epsS + theta * epsW.re;
+            pt.ei = theta * (condTerm + epsW.im);
+          } else if (model === 'topp') {
+            // Topp parametrizável: ε' = a + b·θ + c·θ² + d·θ³
+            // Valores padrão = Topp clássico (a=3.03, b=9.3, c=146, d=-76.7)
+            const a = parseFloat(document.getElementById('topp-a').value);
+            const b = parseFloat(document.getElementById('topp-b').value);
+            const c = parseFloat(document.getElementById('topp-c').value);
+            const d = parseFloat(document.getElementById('topp-d').value);
+            const aa = Number.isFinite(a) ? a : 3.03;
+            const bb = Number.isFinite(b) ? b : 9.3;
+            const cc = Number.isFinite(c) ? c : 146.0;
+            const dd = Number.isFinite(d) ? d : -76.7;
+            const t = theta;
+            pt.er = aa + bb * t + cc * t * t + dd * t * t * t;
+            // ε'' via Debye + condutividade
+            pt.ei = theta * (condTerm + epsW.im);
+          } else {
+            // Mistura Refrativa (padrão)
+            const sqrtEpsW = Math.sqrt(Math.max(epsW.re, 0));
+            const sqrtEpsS = Math.sqrt(Math.max(epsS, 0));
+            const term = 1 + (rhob / rhos) * (sqrtEpsS - 1) + theta * sqrtEpsW;
+            pt.er = term * term;
+            pt.ei = theta * (condTerm + epsW.im);
+          }
+        });
+      });
+    }
+
+    function cmul(a, b) { return { re: a.re * b.re - a.im * b.im, im: a.re * b.im + a.im * b.re }; }
+    function cdiv(a, b) { const d = b.re**2 + b.im**2; return { re: (a.re * b.re + a.im * b.im) / d, im: (a.im * b.re - a.re * b.im) / d }; }
+    function csqrt(a) { const r = Math.sqrt(a.re**2 + a.im**2); return { re: Math.sqrt((r + a.re) / 2), im: (a.im >= 0 ? 1 : -1) * Math.sqrt((r - a.re) / 2) }; }
+    function cabs(a) { return Math.sqrt(a.re**2 + a.im**2); }
+
+    function render() {
+      const list = document.getElementById('file-list-container');
+      
+      list.innerHTML = store.map((f, i) => {
+        const dashVal = Array.isArray(f.borderDash) ? (f.borderDash.length === 0 ? 'solid' : f.borderDash.join(',')) : 'solid';
+        return `
+        <div class="file-card">
+          <div class="order-actions">
+            <button class="btn-order" onclick="moveUp(${i})" ${i === 0 ? 'disabled' : ''} title="Subir na legenda">▲</button>
+            <button class="btn-order" onclick="moveDown(${i})" ${i === store.length - 1 ? 'disabled' : ''} title="Descer na legenda">▼</button>
+          </div>
+          <div class="color-picker-wrapper" title="Alterar cor da linha">
+            <input type="color" class="color-picker" value="${f.color}" oninput="updateFileColor(${i}, this.value)">
+          </div>
+          <input type="text" class="file-rename-input" value="${f.displayName}" oninput="renameFile(${i}, this.value)" title="Clique para editar o rótulo do gráfico">
+          <span style="color: var(--text-secondary); font-size:12px;">(${f.name})</span>
+          <button class="btn-remove" onclick="removeFile(${i})">Remover</button>
+          <div class="file-style-controls">
+            <label title="Mostrar ou ocultar marcadores">
+              <input type="checkbox" ${f.showPoints !== false ? 'checked' : ''} onchange="updateFileStyle(${i}, 'showPoints', this.checked)"> Pontos
+            </label>
+            <label>Tamanho
+              <input type="number" min="0" max="20" step="0.5" value="${f.pointRadius ?? 4.5}" onchange="updateFileStyle(${i}, 'pointRadius', parseFloat(this.value))">
+            </label>
+            <label>Estilo ponto
+              <select onchange="updateFileStyle(${i}, 'pointStyle', this.value)">
+                ${['circle','triangle','rect','rectRot','cross','crossRot','star','dash','line'].map(s =>
+                  `<option value="${s}" ${(f.pointStyle||'circle')===s?'selected':''}>${s}</option>`).join('')}
+              </select>
+            </label>
+            <label>Linha
+              <select onchange="updateFileStyle(${i}, 'borderDash', this.value)">
+                <option value="solid" ${dashVal==='solid'?'selected':''}>Sólida</option>
+                <option value="6,4" ${dashVal==='6,4'?'selected':''}>Tracejada</option>
+                <option value="2,2" ${dashVal==='2,2'?'selected':''}>Pontilhada</option>
+                <option value="8,4,2,4" ${dashVal==='8,4,2,4'?'selected':''}>Traço-ponto</option>
+              </select>
+            </label>
+          </div>
+        </div>`;
+      }).join('');
+
+      if (store.length) { 
+        document.getElementById('viewer-main-content').style.display='block'; 
+        updateMainChart(); 
+        updateMainTable(); 
+      } else {
+        document.getElementById('viewer-main-content').style.display='none';
+      }
+      if (selectedAvgIndices.size) renderAvgSelectors();
+    }
+
+    function updateFileColor(i, newColor) {
+      store[i].color = newColor;
+      updateCharts();
+    }
+
+    function updateFileStyle(i, prop, value) {
+      if (prop === 'borderDash') {
+        store[i].borderDash = (value === 'solid' || !value) ? [] : value.split(',').map(Number);
+      } else if (prop === 'pointRadius') {
+        store[i].pointRadius = Number.isFinite(value) ? value : 4.5;
+      } else if (prop === 'showPoints') {
+        store[i].showPoints = !!value;
+      } else if (prop === 'pointStyle') {
+        store[i].pointStyle = value || 'circle';
+      }
+      updateCharts();
+    }
+
+    function resetMainZoom() {
+      if (mainChart && typeof mainChart.resetZoom === 'function') {
+        mainChart.resetZoom();
+      }
+    }
+
+    function moveUp(i) {
+      if (i === 0) return;
+      const temp = store[i];
+      store[i] = store[i-1];
+      store[i-1] = temp;
+      
+      const hasCurrent = selectedAvgIndices.has(i);
+      const hasPrev = selectedAvgIndices.has(i-1);
+      if (hasCurrent) selectedAvgIndices.add(i-1); else selectedAvgIndices.delete(i-1);
+      if (hasPrev) selectedAvgIndices.add(i); else selectedAvgIndices.delete(i);
+
+      render();
+    }
+
+    function moveDown(i) {
+      if (i === store.length - 1) return;
+      const temp = store[i];
+      store[i] = store[i+1];
+      store[i+1] = temp;
+
+      const hasCurrent = selectedAvgIndices.has(i);
+      const hasNext = selectedAvgIndices.has(i+1);
+      if (hasCurrent) selectedAvgIndices.add(i+1); else selectedAvgIndices.delete(i+1);
+      if (hasNext) selectedAvgIndices.add(i); else selectedAvgIndices.delete(i);
+
+      render();
+    }
+
+    function removeFile(i) { store.splice(i,1); selectedAvgIndices.delete(i); render(); }
+
+    function renameFile(i, newName) {
+      store[i].displayName = newName;
+      updateCharts();
+      updateMainTable();
+      if (document.getElementById('tab-average').style.display !== 'none') {
+        renderAvgSelectors();
+      }
+    }
+
+    function setViewMode(m) { vMode = m; document.querySelectorAll('#tab-viewer .opt-btn').forEach(b => b.classList.remove('active')); document.getElementById(`v-mode-${m.toLowerCase()}`).classList.add('active'); updateMainChart(); }
+
+    function updateCharts() {
+      if (store.length) {
+        updateMainChart();
+        if (selectedAvgIndices.size) {
+          updateAverageResults();
+        }
+      }
+    }
+
+    function getOptionalNumber(id) {
+      const value = parseFloat(document.getElementById(id).value);
+      return Number.isFinite(value) ? value : undefined;
+    }
+
+    function getYAxisLimits(mode) {
+      if (mode === 'S11') {
+        return {
+          min: getOptionalNumber('s11-min'),
+          max: getOptionalNumber('s11-max')
+        };
+      }
+
+      if (mode === 'S21') {
+        return {
+          min: getOptionalNumber('s21-min'),
+          max: getOptionalNumber('s21-max')
+        };
+      }
+
+      return { min: undefined, max: undefined };
+    }
+
+    function updateMainChart() {
+      const ctx = document.getElementById('main-canvas').getContext('2d');
+      if (mainChart) mainChart.destroy();
+
+      const minFreq = parseFloat(document.getElementById('freq-min').value) || undefined;
+      const maxFreq = parseFloat(document.getElementById('freq-max').value) || undefined;
+      const yLimits = getYAxisLimits(vMode);
+
+      mainChart = new Chart(ctx, {
+        type: 'line',
+        data: { 
+          datasets: store.map((f) => {
+            const showPts = f.showPoints !== false;
+            const radius = showPts ? (f.pointRadius ?? 4.5) : 0;
+            return {
+              label: f.displayName, 
+              data: f.data.map(d => ({ x: d.freq / 1e9, y: vMode === 'S11' ? d.s11db : vMode === 'S21' ? d.s21db : vMode === 'er' ? d.er : d.ei })), 
+              borderColor: f.color, 
+              backgroundColor: f.color,
+              borderWidth: 2,
+              borderDash: Array.isArray(f.borderDash) ? f.borderDash : [],
+              pointStyle: f.pointStyle || 'circle',
+              pointRadius: radius,
+              pointHoverRadius: showPts ? Math.max(radius + 2, 6) : 0,
+              showLine: true
+            };
+          }) 
+        },
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false,
+          scales: { 
+            x: { 
+              type: 'linear', 
+              title: { display: true, text: 'Frequência (GHz)', color: '#1e293b', font: { weight: 'bold', size: 13 } }, 
+              grid: { color: '#e2e8f0' }, 
+              ticks: { color: '#1e293b' },
+              min: minFreq,
+              max: maxFreq
+            }, 
+            y: { 
+              title: { display: true, text: Y_AXIS_LABELS[vMode], color: '#1e293b', font: { weight: 'bold', size: 13 } },
+              grid: { color: '#e2e8f0' },
+              ticks: { color: '#1e293b' },
+              min: yLimits.min,
+              max: yLimits.max
+            } 
+          },
+          plugins: { 
+            legend: { 
+              labels: { 
+                color: '#1e293b',
+                usePointStyle: true, 
+                boxWidth: 8,
+                padding: 15
+              } 
+            },
+            zoom: {
+              pan: { enabled: true, mode: 'xy', modifierKey: 'ctrl' },
+              zoom: {
+                wheel: { enabled: true },
+                pinch: { enabled: true },
+                drag: {
+                  enabled: true,
+                  backgroundColor: 'rgba(59,130,246,0.15)',
+                  borderColor: 'rgba(59,130,246,0.6)',
+                  borderWidth: 1
+                },
+                mode: 'xy'
+              },
+              limits: { x: { min: 'original', max: 'original' }, y: { min: 'original', max: 'original' } }
+            }
+          }
+        }
+      });
+    }
+
+    function updateMainTable() {
+      let html = `<thead><tr><th>Freq (GHz)</th>`;
+      store.forEach(f => { html += `<th>${f.displayName} S11</th><th>${f.displayName} ε'</th><th>${f.displayName} ε''</th>`; });
+      html += `</tr></thead><tbody>`;
+      store[0].data.forEach((_, idx) => {
+        html += `<tr><td>${(store[0].data[idx].freq / 1e9).toFixed(4)}</td>`;
+        store.forEach(f => { html += `<td>${f.data[idx].s11db.toFixed(2)}</td><td>${f.data[idx].er.toFixed(4)}</td><td>${f.data[idx].ei.toFixed(4)}</td>`; });
+        html += `</tr>`;
+      });
+      document.getElementById('table-data').innerHTML = html + `</tbody>`;
+    }
+
+    function renderAvgSelectors() {
+      document.getElementById('avg-selector-list').innerHTML = store.map((f, i) => `<div class="select-item ${selectedAvgIndices.has(i) ? 'checked' : ''}" onclick="toggleAvg(${i})"><input type="checkbox" ${selectedAvgIndices.has(i) ? 'checked' : ''}><span>${f.displayName}</span></div>`).join('');
+    }
+
+    function toggleAvg(i) {
+      if (selectedAvgIndices.has(i)) selectedAvgIndices.delete(i); else selectedAvgIndices.add(i);
+      renderAvgSelectors();
+      if (selectedAvgIndices.size) updateAverageResults(); else document.getElementById('average-main-content').style.display='none';
+    }
+
+    function setAvgMode(m) { aMode = m; document.querySelectorAll('#tab-average .opt-btn').forEach(b => b.classList.remove('active')); document.getElementById(`a-mode-${m.toLowerCase()}`).classList.add('active'); updateAverageResults(); }
+
+    function updateAverageResults() {
+      document.getElementById('average-main-content').style.display = 'block';
+      const sel = Array.from(selectedAvgIndices).map(i => store[i]);
+      const avgs = sel[0].data.map((_, idx) => {
+        let s11=0, s21=0, er=0, ei=0;
+        sel.forEach(f => { s11+=f.data[idx].s11db; s21+=f.data[idx].s21db; er+=f.data[idx].er; ei+=f.data[idx].ei; });
+        return { freq: sel[0].data[idx].freq, S11: s11/sel.length, S21: s21/sel.length, er: er/sel.length, ei: ei/sel.length };
+      });
+
+      const minFreq = parseFloat(document.getElementById('freq-min').value) || undefined;
+      const maxFreq = parseFloat(document.getElementById('freq-max').value) || undefined;
+      const yLimits = getYAxisLimits(aMode);
+
+      const ctx = document.getElementById('avg-canvas').getContext('2d');
+      if (avgChart) avgChart.destroy();
+      avgChart = new Chart(ctx, {
+        type: 'line',
+        data: { 
+          datasets: [{ 
+            label: 'Média Calculada', 
+            data: avgs.map(a => ({ x: a.freq/1e9, y: aMode==='S11'?a.S11 : aMode==='S21'?a.S21 : aMode==='er'?a.er : a.ei })), 
+            borderColor: '#3b82f6', 
+            backgroundColor: 'rgba(59,130,246,0.1)',
+            pointStyle: 'circle',
+            pointRadius: 4,
+            fill: true 
+          }] 
+        },
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false,
+          scales: { 
+            x: { 
+              type: 'linear', 
+              title: { display: true, text: 'Frequência (GHz)', color: '#1e293b', font: { weight: 'bold', size: 13 } },
+              grid: { color: '#e2e8f0' },
+              ticks: { color: '#1e293b' },
+              min: minFreq,
+              max: maxFreq
+            },
+            y: {
+              title: { display: true, text: 'Média de ' + Y_AXIS_LABELS[aMode], color: '#1e293b', font: { weight: 'bold', size: 13 } },
+              grid: { color: '#e2e8f0' },
+              ticks: { color: '#1e293b' },
+              min: yLimits.min,
+              max: yLimits.max
+            }
+          },
+          plugins: {
+            legend: {
+              labels: { color: '#1e293b' }
+            },
+            zoom: {
+              pan: { enabled: true, mode: 'xy', modifierKey: 'ctrl' },
+              zoom: {
+                wheel: { enabled: true },
+                pinch: { enabled: true },
+                drag: {
+                  enabled: true,
+                  backgroundColor: 'rgba(59,130,246,0.15)',
+                  borderColor: 'rgba(59,130,246,0.6)',
+                  borderWidth: 1
+                },
+                mode: 'xy'
+              },
+              limits: { x: { min: 'original', max: 'original' }, y: { min: 'original', max: 'original' } }
+            }
+          }
+        }
+      });
+
+      let html = `<thead><tr><th>Freq (GHz)</th><th>S11 Médio</th><th>S21 Médio</th><th>ε' Médio</th><th>ε'' Médio</th></tr></thead><tbody>`;
+      avgs.forEach(a => { html += `<tr><td>${(a.freq/1e9).toFixed(4)}</td><td>${a.S11.toFixed(3)}</td><td>${a.S21.toFixed(3)}</td><td>${a.er.toFixed(5)}</td><td>${a.ei.toFixed(5)}</td></tr>`; });
+      document.getElementById('table-avg').innerHTML = html + `</tbody>`;
+    }
+
+    function saveExcel(tableId, inputId) {
+      const table = document.getElementById(tableId);
+      const filename = document.getElementById(inputId).value || 'Export';
+      const wb = XLSX.utils.table_to_book(table);
+      XLSX.writeFile(wb, `${filename}.xlsx`);
+    }
+
+    function saveGraph(canvasId, titleInputId) {
+      const canvas = document.getElementById(canvasId);
+      const name = document.getElementById(titleInputId).value || 'grafico';
+      const offscreen = document.createElement('canvas');
+      offscreen.width = canvas.width; offscreen.height = canvas.height;
+      const ctx = offscreen.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,offscreen.width, offscreen.height);
+      ctx.drawImage(canvas, 0, 0);
+      const link = document.createElement('a');
+      link.download = `${name}.png`;
+      link.href = offscreen.toDataURL('image/png');
+      link.click();
+    }
+
+    // ==========================================
+    // MÓDULO 3D: LEITURA DE CSV E AJUSTE DE SUPERFÍCIE
+    // ==========================================
+    
+    function handleCSVSelect(files) {
+      if (!files.length) return;
+      const file = files[0];
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        const text = e.target.result;
+        // Parsing simplificado de CSV usando SheetJS para robustez completa com delimitadores
+        const workbook = XLSX.read(text, { type: 'string' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rawJson = XLSX.utils.sheet_to_json(sheet);
+
+        if (!rawJson.length) {
+          alert("O arquivo CSV está vazio ou possui formato inválido.");
+          return;
+        }
+
+        csvData = rawJson;
+        csvHeaders = Object.keys(rawJson[0]);
+
+        populateDropdowns();
+        document.getElementById('content-3d').style.display = 'grid';
+        run3DFitting();
+      };
+      
+      reader.readAsText(file);
+    }
+
+    function populateDropdowns() {
+      const xSel = document.getElementById('select-x');
+      const ySel = document.getElementById('select-y');
+      const zSel = document.getElementById('select-z');
+      const catSel = document.getElementById('select-category');
+
+      // Limpar opções
+      xSel.innerHTML = ""; ySel.innerHTML = ""; zSel.innerHTML = ""; catSel.innerHTML = "<option value=''>Nenhuma (Sem Grupo)</option>";
+
+      csvHeaders.forEach(header => {
+        const option = `<option value="${header}">${header}</option>`;
+        xSel.innerHTML += option;
+        ySel.innerHTML += option;
+        zSel.innerHTML += option;
+        catSel.innerHTML += option;
+      });
+
+      // Seleções padrões inteligentes baseadas nos nomes de colunas do script do usuário
+      const setSelectionIfExists = (elem, matches) => {
+        const found = csvHeaders.find(h => matches.some(m => h.toLowerCase().includes(m)));
+        if (found) elem.value = found;
+      };
+
+      setSelectionIfExists(xSel, ['moisture', 'umidade', 'percent']);
+      setSelectionIfExists(ySel, ['real_permittivity', 'permissividade', 'er', 'measured']);
+      setSelectionIfExists(zSel, ['frequency', 'frequencia', 'freq', 'ghz']);
+      setSelectionIfExists(catSel, ['condition', 'condicao', 'grupo', 'mass', 'height']);
+    }
+
+    function run3DFitting() {
+      const xCol = document.getElementById('select-x').value;
+      const yCol = document.getElementById('select-y').value;
+      const zCol = document.getElementById('select-z').value;
+      const catCol = document.getElementById('select-category').value;
+
+      if (!xCol || !yCol || !zCol) return;
+
+      // Filtrar e converter dados para numéricos
+      const validPoints = csvData.map(row => ({
+        x: parseFloat(row[xCol]),
+        y: parseFloat(row[yCol]),
+        z: parseFloat(row[zCol]),
+        category: catCol ? String(row[catCol] || 'Default') : 'Dados'
+      })).filter(p => !isNaN(p.x) && !isNaN(p.y) && !isNaN(p.z));
+
+      if (validPoints.length < 6) {
+        alert("Quantidade insuficiente de pontos numéricos válidos no arquivo (mínimo de 6 pontos para ajuste quadrático).");
+        return;
+      }
+
+      // Preparação das matrizes de Mínimos Quadrados para o modelo quadrático:
+      // z = a + b*x + c*y + d*x^2 + e*x*y + f*y^2
+      // Matriz de Design A (N x 6)
+      const A = validPoints.map(p => [1, p.x, p.y, p.x**2, p.x * p.y, p.y**2]);
+      const Z = validPoints.map(p => p.z);
+
+      // Obter Coeficientes [a, b, c, d, e, f]
+      const coeffs = solveLeastSquares(A, Z);
+      const [a, b, c, d, e, f_coef] = coeffs;
+
+      // Cálculo de Métricas (R² e RMSE)
+      const predictions = validPoints.map(p => a + b*p.x + c*p.y + d*(p.x**2) + e*p.x*p.y + f_coef*(p.y**2));
+      const zMean = Z.reduce((sum, val) => sum + val, 0) / Z.length;
+      
+      const ssRes = Z.reduce((sum, val, idx) => sum + (val - predictions[idx])**2, 0);
+      const ssTot = Z.reduce((sum, val) => sum + (val - zMean)**2, 0);
+      
+      const r2 = 1 - (ssRes / (ssTot || 1e-12));
+      const rmse = Math.sqrt(ssRes / Z.length);
+
+      // Exibir Métricas e Equação na Tela
+      document.getElementById('val-r2').innerText = r2.toFixed(4);
+      document.getElementById('val-rmse').innerText = rmse.toFixed(4);
+      document.getElementById('equation-text').innerHTML = `
+        z = (${a.toFixed(4)}) <br>
+        + (${b.toFixed(4)}) · x <br>
+        + (${c.toFixed(4)}) · y <br>
+        + (${d.toFixed(4)}) · x² <br>
+        + (${e.toFixed(4)}) · x·y <br>
+        + (${f_coef.toFixed(4)}) · y²
+      `;
+
+      // Gerar a malha (MeshGrid) da superfície 3D baseada nos limites de X e Y
+      const xMin = Math.min(...validPoints.map(p => p.x));
+      const xMax = Math.max(...validPoints.map(p => p.x));
+      const yMin = Math.min(...validPoints.map(p => p.y));
+      const yMax = Math.max(...validPoints.map(p => p.y));
+
+      const steps = 40;
+      const xRange = Array.from({length: steps}, (_, i) => xMin + (i * (xMax - xMin) / (steps - 1)));
+      const yRange = Array.from({length: steps}, (_, i) => yMin + (i * (yMax - yMin) / (steps - 1)));
+
+      // Plotly requer estruturas de matrizes bidimensionais para superfícies (Z_mesh)
+      const zMesh = [];
+      for (let j = 0; j < yRange.length; j++) {
+        const row = [];
+        for (let i = 0; i < xRange.length; i++) {
+          const xVal = xRange[i];
+          const yVal = yRange[j];
+          const zVal = a + b*xVal + c*yVal + d*(xVal**2) + e*xVal*yVal + f_coef*(yVal**2);
+          row.push(zVal);
+        }
+        zMesh.push(row);
+      }
+
+      // Preparar os conjuntos de dados (Traces) para o Plotly
+      const traces = [];
+
+      // 1. Plotar a Superfície de Ajuste
+      traces.push({
+        x: xRange,
+        y: yRange,
+        z: zMesh,
+        type: 'surface',
+        colorscale: 'Viridis',
+        opacity: 0.8,
+        showscale: true,
+        colorbar: { title: zCol, tickcolor: '#e2e8f0', titlefont: { color: '#e2e8f0' } },
+        name: 'Ajuste Quadrático'
+      });
+
+      // 2. Agrupar e plotar os Pontos Dispersos por categoria (Condition / Mass, Height)
+      const groups = {};
+      validPoints.forEach(p => {
+        if (!groups[p.category]) groups[p.category] = { x: [], y: [], z: [] };
+        groups[p.category].x.push(p.x);
+        groups[p.category].y.push(p.y);
+        groups[p.category].z.push(p.z);
+      });
+
+      Object.keys(groups).forEach(groupName => {
+        traces.push({
+          x: groups[groupName].x,
+          y: groups[groupName].y,
+          z: groups[groupName].z,
+          mode: 'markers',
+          type: 'scatter3d',
+          marker: {
+            size: 6,
+            line: { color: 'rgba(0,0,0,0.8)', width: 1 },
+            opacity: 0.9
+          },
+          name: groupName
+        });
+      });
+
+      const layout = {
+        scene: {
+          xaxis: { title: xCol, gridcolor: '#2a3242', backgroundcolor: '#171b26', showbackground: true, color: '#e2e8f0' },
+          yaxis: { title: yCol, gridcolor: '#2a3242', backgroundcolor: '#171b26', showbackground: true, color: '#e2e8f0' },
+          zaxis: { title: zCol, gridcolor: '#2a3242', backgroundcolor: '#171b26', showbackground: true, color: '#e2e8f0' },
+          camera: { eye: { x: 1.5, y: 1.5, z: 1.2 } }
+        },
+        margin: { l: 0, r: 0, b: 0, t: 0 },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        legend: { font: { color: '#e2e8f0' }, yanchor: 'top', y: 0.9 }
+      };
+
+      const config = { responsive: true };
+
+      Plotly.newPlot('plotly-3d-container', traces, layout, config);
+    }
+
+    // Resolutor Linear M*x = B usando Eliminação Gaussiana com Pivoteamento Parcial (Para mínimos quadrados)
+    function solveLeastSquares(A, Z) {
+      const n = A.length;
+      const m = A[0].length; // 6 para o nosso polinômio quadrático de duas variáveis
+      
+      // Computar M = A^T * A (6x6)
+      const M = Array(m).fill(0).map(() => Array(m).fill(0));
+      for (let i = 0; i < m; i++) {
+        for (let j = 0; j < m; j++) {
+          let sum = 0;
+          for (let k = 0; k < n; k++) {
+            sum += A[k][i] * A[k][j];
+          }
+          M[i][j] = sum;
+        }
+      }
+      
+      // Computar B = A^T * Z (6x1)
+      const B = Array(m).fill(0);
+      for (let i = 0; i < m; i++) {
+        let sum = 0;
+        for (let k = 0; k < n; k++) {
+          sum += A[k][i] * Z[k];
+        }
+        B[i] = sum;
+      }
+      
+      // Resolver M * beta = B
+      return gaussianElimination(M, B);
+    }
+
+    function gaussianElimination(A, b) {
+      const n = b.length;
+      const M = A.map((row, i) => [...row, b[i]]);
+      
+      for (let i = 0; i < n; i++) {
+        let maxEl = Math.abs(M[i][i]);
+        let maxRow = i;
+        for (let k = i + 1; k < n; k++) {
+          if (Math.abs(M[k][i]) > maxEl) {
+            maxEl = Math.abs(M[k][i]);
+            maxRow = k;
+          }
+        }
+        
+        const temp = M[maxRow];
+        M[maxRow] = M[i];
+        M[i] = temp;
+        
+        if (Math.abs(M[i][i]) < 1e-12) {
+          // Matriz singular, preencher com vetor nulo ou resolver com pequena regularização
+          M[i][i] = 1e-12;
+        }
+
+        for (let k = i + 1; k < n; k++) {
+          const c = -M[k][i] / M[i][i];
+          for (let j = i; j < n + 1; j++) {
+            if (i === j) {
+              M[k][j] = 0;
+            } else {
+              M[k][j] += c * M[i][j];
+            }
+          }
+        }
+      }
+      
+      const x = Array(n).fill(0);
+      for (let i = n - 1; i >= 0; i--) {
+        x[i] = M[i][n] / M[i][i];
+        for (let k = i - 1; k >= 0; k--) {
+          M[k][n] -= M[k][i] * x[i];
+        }
+      }
+      return x;
+    }
+
+    // Inicializa visibilidade dos campos conforme o modelo selecionado
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', updateModelHints);
+    } else {
+      updateModelHints();
+    }
+  </script>
+</body>
+</html>
