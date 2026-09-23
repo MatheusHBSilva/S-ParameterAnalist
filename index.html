@@ -401,8 +401,8 @@
       </select>
     </div>
     <div class="input-field">
-      <label class="sec-label">θ — Água volumétrica (m³/m³)</label>
-      <input type="number" id="soil-theta" value="0.20" step="0.01" min="0" max="1" oninput="syncAndRecalculate()">
+      <label class="sec-label">θ padrão (novas amostras)</label>
+      <input type="number" id="soil-theta" value="0.20" step="0.01" min="0" max="1" title="Valor inicial de θ ao carregar um novo arquivo. Cada amostra tem o seu próprio θ editável na lista.">
     </div>
     <div class="input-field" id="field-rhob">
       <label class="sec-label">ρ_b — Densidade aparente (g/cm³)</label>
@@ -469,6 +469,7 @@
   <div class="tabs">
     <div class="tab active" id="btn-tab-viewer" onclick="setTab('viewer')">Visualizador Individual</div>
     <div class="tab" id="btn-tab-average" onclick="setTab('average')">Média de Amostras</div>
+    <div class="tab" id="btn-tab-moisture" onclick="setTab('moisture')">Moisture % × ε'</div>
     <div class="tab" id="btn-tab-3d" onclick="setTab('3d')">Ajuste de Superfície 3D</div>
   </div>
 
@@ -545,6 +546,38 @@
     </div>
   </div>
 
+  <div id="tab-moisture" style="display:none">
+    <div class="panel">
+      <div class="control-row">
+        <div class="opt-group">
+          <span class="sec-label" style="margin:0; align-self:center;">Freq. de referência (GHz) p/ ε' das amostras</span>
+          <input type="number" id="moisture-freq" value="4.4" step="0.1" min="0.01" style="width:90px; background:#0f1117; border:1px solid var(--border); color:var(--text); padding:8px 12px; border-radius:8px;" oninput="updateMoistureChart()">
+        </div>
+        <div class="export-input-group">
+          <input type="text" id="moisture-chart-title" value="Moisture_vs_Eps">
+          <button class="action-btn" onclick="saveGraph('moisture-canvas', 'moisture-chart-title')">Baixar PNG</button>
+          <button class="action-btn" onclick="resetMoistureZoom()" title="Resetar zoom">Reset Zoom</button>
+        </div>
+      </div>
+      <p style="color:var(--text-secondary); font-size:13px; margin-bottom:12px;">
+        Eixo X: teor de umidade volumétrica θ (%). Eixo Y: permissividade relativa real ε'.
+        A curva é o modelo selecionado; os pontos são as amostras carregadas (θ individual de cada uma).
+      </p>
+      <div class="chart-box"><canvas id="moisture-canvas"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <div class="control-row">
+        <span class="sec-label">Tabela Moisture % × ε'</span>
+        <div class="export-input-group">
+          <input type="text" id="moisture-table-filename" value="Moisture_Eps_Export">
+          <button class="action-btn" onclick="saveExcel('table-moisture', 'moisture-table-filename')" style="color:var(--success);">Exportar Excel</button>
+        </div>
+      </div>
+      <div class="table-container"><table id="table-moisture"></table></div>
+    </div>
+  </div>
+
   <div id="tab-3d" style="display:none">
     <div class="panel">
       <div class="sec-label">Upload do arquivo de medições (.csv)</div>
@@ -607,6 +640,7 @@
     let selectedAvgIndices = new Set();
     let mainChart = null;
     let avgChart = null;
+    let moistureChart = null;
     const SPEED_LIGHT = 299792458;
 
     const POINT_STYLES = ['circle', 'triangle', 'rect', 'rectRot', 'cross', 'crossRot', 'star'];
@@ -625,18 +659,22 @@
     function setTab(t) {
       document.getElementById('tab-viewer').style.display = t === 'viewer' ? 'block' : 'none';
       document.getElementById('tab-average').style.display = t === 'average' ? 'block' : 'none';
+      document.getElementById('tab-moisture').style.display = t === 'moisture' ? 'block' : 'none';
       document.getElementById('tab-3d').style.display = t === '3d' ? 'block' : 'none';
       
       document.getElementById('btn-tab-viewer').classList.toggle('active', t === 'viewer');
       document.getElementById('btn-tab-average').classList.toggle('active', t === 'average');
+      document.getElementById('btn-tab-moisture').classList.toggle('active', t === 'moisture');
       document.getElementById('btn-tab-3d').classList.toggle('active', t === '3d');
       
       if (t === 'average') renderAvgSelectors();
+      if (t === 'moisture') updateMoistureChart();
     }
 
     function syncAndRecalculate() {
       runNRWCalculations();
       render();
+      updateMoistureChart();
     }
 
     function handleFileSelect(files) {
@@ -672,12 +710,14 @@
       const defaultDisplayName = filename.replace(/\.(s1p|s2p)$/i, '');
       const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
 
+      const defaultTheta = parseFloat(document.getElementById('soil-theta')?.value);
       return data.length ? { 
         id: Date.now()+Math.random(), 
         name: filename, 
         displayName: defaultDisplayName, 
         data, 
         color: randomColor,
+        theta: Number.isFinite(defaultTheta) ? defaultTheta : 0.20, // água volumétrica individual
         // estilo customizável por série
         pointRadius: 4.5,
         showPoints: true,
@@ -720,18 +760,9 @@
     }
 
     function runNRWCalculations() {
-      // Três modelos disponíveis (imagem do artigo):
-      // 1) Mistura Refrativa (CRIM):
-      //    ε'  = [1 + (ρ_b/ρ_s)(√ε_s − 1) + θ √ε_ω']²
-      //    ε'' = θ (σ_s/(2πf ε_0) + ε_ω'')
-      // 2) Linear:
-      //    ε'  = ε_d + θ · ε_ω'
-      //    ε'' = θ · (σ_s/(2πf ε_0) + ε_ω'')
-      // 3) Topp (empírico, só parte real clássica):
-      //    ε'  = 3.03 + 9.3 θ + 146 θ² − 76.7 θ³
-      //    ε'' = θ (σ_s/(2πf ε_0) + ε_ω'')   (mantido para ter parte imaginária)
+      // Três modelos disponíveis (imagem do artigo).
+      // θ é individual por amostra (file.theta), não global.
       const model = document.getElementById('perm-model').value || 'refractive';
-      const theta = parseFloat(document.getElementById('soil-theta').value) || 0;
       const rhob  = parseFloat(document.getElementById('soil-rhob').value)  || 1.4;
       const rhos  = parseFloat(document.getElementById('soil-rhos').value)  || 2.65;
       const epsS  = parseFloat(document.getElementById('soil-eps').value)   || 4.7; // ε_s ou ε_d
@@ -739,7 +770,20 @@
       const tempC = parseFloat(document.getElementById('soil-temp').value)  || 20;
       const EPS0  = 8.854187817e-12;
 
+      // Coeficientes Topp (globais; θ continua individual)
+      const a = parseFloat(document.getElementById('topp-a')?.value);
+      const b = parseFloat(document.getElementById('topp-b')?.value);
+      const c = parseFloat(document.getElementById('topp-c')?.value);
+      const d = parseFloat(document.getElementById('topp-d')?.value);
+      const aa = Number.isFinite(a) ? a : 3.03;
+      const bb = Number.isFinite(b) ? b : 9.3;
+      const cc = Number.isFinite(c) ? c : 146.0;
+      const dd = Number.isFinite(d) ? d : -76.7;
+
       store.forEach(file => {
+        // θ individual desta amostra
+        const theta = Number.isFinite(file.theta) ? file.theta : 0.20;
+
         file.data.forEach(pt => {
           const s11 = pt.s11;
           const s21 = pt.s21;
@@ -759,18 +803,8 @@
             pt.ei = theta * (condTerm + epsW.im);
           } else if (model === 'topp') {
             // Topp parametrizável: ε' = a + b·θ + c·θ² + d·θ³
-            // Valores padrão = Topp clássico (a=3.03, b=9.3, c=146, d=-76.7)
-            const a = parseFloat(document.getElementById('topp-a').value);
-            const b = parseFloat(document.getElementById('topp-b').value);
-            const c = parseFloat(document.getElementById('topp-c').value);
-            const d = parseFloat(document.getElementById('topp-d').value);
-            const aa = Number.isFinite(a) ? a : 3.03;
-            const bb = Number.isFinite(b) ? b : 9.3;
-            const cc = Number.isFinite(c) ? c : 146.0;
-            const dd = Number.isFinite(d) ? d : -76.7;
             const t = theta;
             pt.er = aa + bb * t + cc * t * t + dd * t * t * t;
-            // ε'' via Debye + condutividade
             pt.ei = theta * (condTerm + epsW.im);
           } else {
             // Mistura Refrativa (padrão)
@@ -807,6 +841,10 @@
           <span style="color: var(--text-secondary); font-size:12px;">(${f.name})</span>
           <button class="btn-remove" onclick="removeFile(${i})">Remover</button>
           <div class="file-style-controls">
+            <label title="Água volumétrica desta amostra (m³/m³)">
+              θ
+              <input type="number" min="0" max="1" step="0.01" value="${Number.isFinite(f.theta) ? f.theta : 0.20}" onchange="updateFileStyle(${i}, 'theta', parseFloat(this.value))" style="width:64px;">
+            </label>
             <label title="Mostrar ou ocultar marcadores">
               <input type="checkbox" ${f.showPoints !== false ? 'checked' : ''} onchange="updateFileStyle(${i}, 'showPoints', this.checked)"> Pontos
             </label>
@@ -855,6 +893,16 @@
         store[i].showPoints = !!value;
       } else if (prop === 'pointStyle') {
         store[i].pointStyle = value || 'circle';
+      } else if (prop === 'theta') {
+        const t = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0.20;
+        store[i].theta = t;
+        // Recalcula ε'/ε'' só desta amostra e atualiza gráficos/tabelas
+        runNRWCalculations();
+        updateMainChart();
+        updateMainTable();
+        if (selectedAvgIndices.size) updateAverageResults();
+        updateMoistureChart();
+        return;
       }
       updateCharts();
     }
@@ -912,6 +960,195 @@
         if (selectedAvgIndices.size) {
           updateAverageResults();
         }
+      }
+      if (document.getElementById('tab-moisture').style.display !== 'none') {
+        updateMoistureChart();
+      }
+    }
+
+    // ε' do modelo para um θ e frequência dados (mesmas fórmulas dos gráficos principais)
+    function computeEpsPrimeAt(theta, freqHz) {
+      const model = document.getElementById('perm-model').value || 'refractive';
+      const rhob  = parseFloat(document.getElementById('soil-rhob').value)  || 1.4;
+      const rhos  = parseFloat(document.getElementById('soil-rhos').value)  || 2.65;
+      const epsS  = parseFloat(document.getElementById('soil-eps').value)   || 4.7;
+      const tempC = parseFloat(document.getElementById('soil-temp').value)  || 20;
+      const epsW = debyeWater(freqHz, tempC);
+
+      if (model === 'linear') {
+        return epsS + theta * epsW.re;
+      }
+      if (model === 'topp') {
+        const a = parseFloat(document.getElementById('topp-a')?.value);
+        const b = parseFloat(document.getElementById('topp-b')?.value);
+        const c = parseFloat(document.getElementById('topp-c')?.value);
+        const d = parseFloat(document.getElementById('topp-d')?.value);
+        const aa = Number.isFinite(a) ? a : 3.03;
+        const bb = Number.isFinite(b) ? b : 9.3;
+        const cc = Number.isFinite(c) ? c : 146.0;
+        const dd = Number.isFinite(d) ? d : -76.7;
+        return aa + bb * theta + cc * theta * theta + dd * theta * theta * theta;
+      }
+      // refractive
+      const sqrtEpsW = Math.sqrt(Math.max(epsW.re, 0));
+      const sqrtEpsS = Math.sqrt(Math.max(epsS, 0));
+      const term = 1 + (rhob / rhos) * (sqrtEpsS - 1) + theta * sqrtEpsW;
+      return term * term;
+    }
+
+    function getSampleEpsAtFreq(file, freqHz) {
+      // Interpola linearmente ε' no ponto de frequência mais próximo / entre vizinhos
+      const data = file.data;
+      if (!data || !data.length) return null;
+      if (data.length === 1) return data[0].er;
+
+      // busca o ponto mais próximo ou interpola
+      let lo = 0;
+      for (let i = 0; i < data.length - 1; i++) {
+        if (data[i].freq <= freqHz && data[i + 1].freq >= freqHz) {
+          lo = i;
+          break;
+        }
+        if (data[i].freq < freqHz) lo = i;
+      }
+      const hi = Math.min(lo + 1, data.length - 1);
+      if (lo === hi || data[hi].freq === data[lo].freq) return data[lo].er;
+      const t = (freqHz - data[lo].freq) / (data[hi].freq - data[lo].freq);
+      return data[lo].er + t * (data[hi].er - data[lo].er);
+    }
+
+    function updateMoistureChart() {
+      const ctx = document.getElementById('moisture-canvas');
+      if (!ctx) return;
+      if (moistureChart) moistureChart.destroy();
+
+      const freqGHz = parseFloat(document.getElementById('moisture-freq').value) || 4.4;
+      const freqHz = freqGHz * 1e9;
+
+      // Curva teórica do modelo: θ de 0 a 0.50 (0–50%)
+      const modelCurve = [];
+      for (let i = 0; i <= 100; i++) {
+        const th = i / 200; // 0 .. 0.50
+        modelCurve.push({ x: th * 100, y: computeEpsPrimeAt(th, freqHz) });
+      }
+
+      // Pontos das amostras
+      const samplePoints = store.map(f => {
+        const th = Number.isFinite(f.theta) ? f.theta : 0.20;
+        const er = getSampleEpsAtFreq(f, freqHz);
+        return {
+          x: th * 100,
+          y: er,
+          label: f.displayName,
+          color: f.color
+        };
+      }).filter(p => p.y != null && Number.isFinite(p.y));
+
+      const datasets = [
+        {
+          label: 'Modelo selecionado',
+          data: modelCurve,
+          borderColor: '#94a3b8',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          showLine: true,
+          order: 2
+        }
+      ];
+
+      // Uma série por amostra (ponto isolado) para legenda colorida
+      samplePoints.forEach(p => {
+        datasets.push({
+          label: p.label,
+          data: [{ x: p.x, y: p.y }],
+          borderColor: p.color,
+          backgroundColor: p.color,
+          borderWidth: 2,
+          pointRadius: 8,
+          pointHoverRadius: 11,
+          pointStyle: 'circle',
+          showLine: false,
+          order: 1
+        });
+      });
+
+      moistureChart = new Chart(ctx.getContext('2d'), {
+        type: 'scatter',
+        data: { datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              type: 'linear',
+              title: { display: true, text: 'Moisture content θ (%)', color: '#1e293b', font: { weight: 'bold', size: 13 } },
+              grid: { color: '#e2e8f0' },
+              ticks: { color: '#1e293b' },
+              min: 0,
+              max: 50
+            },
+            y: {
+              title: { display: true, text: "Permissividade relativa ε'", color: '#1e293b', font: { weight: 'bold', size: 13 } },
+              grid: { color: '#e2e8f0' },
+              ticks: { color: '#1e293b' }
+            }
+          },
+          plugins: {
+            legend: {
+              labels: { color: '#1e293b', usePointStyle: true, boxWidth: 8, padding: 15 }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const x = ctx.parsed.x;
+                  const y = ctx.parsed.y;
+                  return `${ctx.dataset.label}: θ = ${x.toFixed(1)}%, ε' = ${y.toFixed(3)}`;
+                }
+              }
+            },
+            zoom: {
+              pan: { enabled: true, mode: 'xy', modifierKey: 'ctrl' },
+              zoom: {
+                wheel: { enabled: true },
+                pinch: { enabled: true },
+                drag: {
+                  enabled: true,
+                  backgroundColor: 'rgba(59,130,246,0.15)',
+                  borderColor: 'rgba(59,130,246,0.6)',
+                  borderWidth: 1
+                },
+                mode: 'xy'
+              },
+              limits: { x: { min: 'original', max: 'original' }, y: { min: 'original', max: 'original' } }
+            }
+          }
+        }
+      });
+
+      // Tabela
+      let html = `<thead><tr><th>Amostra</th><th>θ (fração)</th><th>Moisture (%)</th><th>ε' @ ${freqGHz} GHz</th></tr></thead><tbody>`;
+      store.forEach(f => {
+        const th = Number.isFinite(f.theta) ? f.theta : 0.20;
+        const er = getSampleEpsAtFreq(f, freqHz);
+        html += `<tr>
+          <td>${f.displayName}</td>
+          <td>${th.toFixed(3)}</td>
+          <td>${(th * 100).toFixed(1)}</td>
+          <td>${er != null && Number.isFinite(er) ? er.toFixed(4) : '—'}</td>
+        </tr>`;
+      });
+      if (!store.length) {
+        html += `<tr><td colspan="4" style="color:var(--text-secondary);">Carregue amostras na aba Visualizador.</td></tr>`;
+      }
+      document.getElementById('table-moisture').innerHTML = html + `</tbody>`;
+    }
+
+    function resetMoistureZoom() {
+      if (moistureChart && typeof moistureChart.resetZoom === 'function') {
+        moistureChart.resetZoom();
       }
     }
 
