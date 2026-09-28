@@ -384,13 +384,157 @@
       color: var(--warning);
       word-break: break-all;
     }
+
+    /* Header / UI clean */
+    .app-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .app-header-left { flex: 1; min-width: 220px; }
+    .app-header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .lang-switch {
+      display: flex;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 4px;
+      gap: 2px;
+    }
+    .lang-btn {
+      padding: 8px 14px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .lang-btn.active { background: var(--accent); color: white; }
+    .version-badge {
+      font-size: 12px;
+      color: var(--text-secondary);
+      background: #1e2533;
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 8px;
+    }
+
+    .collapse-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+      margin-bottom: 0;
+      padding: 12px 16px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .collapse-header:hover { border-color: var(--accent); color: white; }
+    .collapse-header .chevron { transition: transform 0.2s; font-size: 12px; }
+    .collapse-header.open .chevron { transform: rotate(180deg); }
+    .collapse-body {
+      display: none;
+      margin-top: 12px;
+      margin-bottom: 20px;
+    }
+    .collapse-body.open { display: block; }
+
+    .chart-opts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px;
+      background: #1e2533;
+      padding: 16px;
+      border-radius: 12px;
+      border-left: 4px solid var(--accent);
+      margin-bottom: 16px;
+    }
+
+    .tabs {
+      flex-wrap: wrap;
+      max-width: 100%;
+    }
+    .tab { padding: 10px 18px; font-size: 13.5px; }
+
+    .updates-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .update-card {
+      background: #1e2533;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+    .update-card h3 {
+      font-size: 15px;
+      color: white;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .update-card .ver {
+      background: var(--accent);
+      color: white;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+    .update-card .date {
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+    .update-card ul {
+      margin-left: 18px;
+      color: var(--text);
+      font-size: 13.5px;
+    }
+    .update-card li { margin-bottom: 4px; }
   </style>
 </head>
 <body>
 
-  <h1>S11, S21 & Analisador de Permissividade</h1>
-  <p class="subtitle">S11/S21 + modelo de mistura refrativo (ε' / ε'') para solo</p>
+  <div class="app-header">
+    <div class="app-header-left">
+      <h1 data-i18n="appTitle">S11, S21 & Analisador de Permissividade</h1>
+      <p class="subtitle" data-i18n="appSubtitle" style="margin-bottom:0">S11/S21 + modelos de permissividade para solo</p>
+    </div>
+    <div class="app-header-right">
+      <span class="version-badge">v2.1.0</span>
+      <div class="lang-switch" title="Language / Idioma">
+        <button type="button" class="lang-btn active" id="lang-pt" onclick="setLanguage('pt')">PT</button>
+        <button type="button" class="lang-btn" id="lang-en" onclick="setLanguage('en')">EN</button>
+      </div>
+    </div>
+  </div>
 
+  <div class="collapse-header open" id="cfg-toggle" onclick="toggleCollapse('cfg')">
+    <span data-i18n="cfgTitle">Parâmetros do modelo &amp; eixos</span>
+    <span class="chevron">▼</span>
+  </div>
+  <div class="collapse-body open" id="cfg-body">
   <div class="config-bar">
     <div class="input-field">
       <label class="sec-label">Modelo de Permissividade</label>
@@ -461,16 +605,72 @@
       <input type="number" id="s21-min" placeholder="Mínimo" step="0.1" oninput="updateCharts()">
     </div>
     <div class="input-field">
-      <label class="sec-label">S21 Máximo (dB)</label>
+      <label class="sec-label" data-i18n="s21Max">S21 Máximo (dB)</label>
       <input type="number" id="s21-max" placeholder="Máximo" step="0.1" oninput="updateCharts()">
     </div>
   </div>
 
+  <div class="collapse-header open" id="chartopt-toggle" onclick="toggleCollapse('chartopt')" style="margin-top:12px">
+    <span data-i18n="chartOptsTitle">Opções dos gráficos (eixos, fonte, legenda)</span>
+    <span class="chevron">▼</span>
+  </div>
+  <div class="collapse-body open" id="chartopt-body">
+    <div class="chart-opts-grid">
+      <div class="input-field">
+        <label class="sec-label" data-i18n="optXTitle">Título eixo X</label>
+        <input type="text" id="opt-x-title" placeholder="auto" oninput="applyChartOptions()">
+      </div>
+      <div class="input-field">
+        <label class="sec-label" data-i18n="optYTitle">Título eixo Y</label>
+        <input type="text" id="opt-y-title" placeholder="auto" oninput="applyChartOptions()">
+      </div>
+      <div class="input-field">
+        <label class="sec-label" data-i18n="optTitleSize">Tamanho título eixos</label>
+        <input type="number" id="opt-title-size" value="13" min="8" max="28" step="1" oninput="applyChartOptions()">
+      </div>
+      <div class="input-field">
+        <label class="sec-label" data-i18n="optTickSize">Tamanho números (ticks)</label>
+        <input type="number" id="opt-tick-size" value="12" min="8" max="24" step="1" oninput="applyChartOptions()">
+      </div>
+      <div class="input-field">
+        <label class="sec-label" data-i18n="optLegendPos">Posição da legenda</label>
+        <select id="opt-legend-pos" onchange="applyChartOptions()">
+          <option value="top">Top</option>
+          <option value="bottom">Bottom</option>
+          <option value="left">Left</option>
+          <option value="right">Right</option>
+          <option value="none">None</option>
+        </select>
+      </div>
+      <div class="input-field">
+        <label class="sec-label" data-i18n="optFont">Fonte</label>
+        <select id="opt-font" onchange="applyChartOptions()">
+          <option value="Segoe UI">Segoe UI</option>
+          <option value="Arial">Arial</option>
+          <option value="Helvetica">Helvetica</option>
+          <option value="Times New Roman">Times New Roman</option>
+          <option value="Courier New">Courier New</option>
+          <option value="Georgia">Georgia</option>
+        </select>
+      </div>
+      <div class="input-field">
+        <label class="sec-label" data-i18n="optLegendSize">Tamanho legenda</label>
+        <input type="number" id="opt-legend-size" value="12" min="8" max="20" step="1" oninput="applyChartOptions()">
+      </div>
+      <div class="input-field">
+        <label class="sec-label" data-i18n="optLineWidth">Espessura da linha</label>
+        <input type="number" id="opt-line-width" value="2" min="1" max="6" step="0.5" oninput="applyChartOptions()">
+      </div>
+    </div>
+  </div>
+  </div><!-- end cfg-body -->
+
   <div class="tabs">
-    <div class="tab active" id="btn-tab-viewer" onclick="setTab('viewer')">Visualizador Individual</div>
-    <div class="tab" id="btn-tab-average" onclick="setTab('average')">Média de Amostras</div>
-    <div class="tab" id="btn-tab-moisture" onclick="setTab('moisture')">Moisture % × ε'</div>
-    <div class="tab" id="btn-tab-3d" onclick="setTab('3d')">Ajuste de Superfície 3D</div>
+    <div class="tab active" id="btn-tab-viewer" onclick="setTab('viewer')" data-i18n="tabViewer">Visualizador Individual</div>
+    <div class="tab" id="btn-tab-average" onclick="setTab('average')" data-i18n="tabAverage">Média de Amostras</div>
+    <div class="tab" id="btn-tab-moisture" onclick="setTab('moisture')" data-i18n="tabMoisture">Moisture % × ε'</div>
+    <div class="tab" id="btn-tab-3d" onclick="setTab('3d')" data-i18n="tab3d">Ajuste de Superfície 3D</div>
+    <div class="tab" id="btn-tab-updates" onclick="setTab('updates')" data-i18n="tabUpdates">Updates</div>
   </div>
 
   <div id="tab-viewer">
@@ -633,6 +833,52 @@
     </div>
   </div>
 
+  <div id="tab-updates" style="display:none">
+    <div class="panel">
+      <div class="sec-label" data-i18n="updatesTitle">Histórico de versões / Patch notes</div>
+      <p style="color:var(--text-secondary); margin-bottom:18px;" data-i18n="updatesIntro">Versão atual: <strong>v2.1.0</strong></p>
+      <ul class="updates-list">
+        <li class="update-card">
+          <h3><span class="ver">v2.1.0</span> <span data-i18n="u210title">UI, i18n, eixos editáveis e Updates</span></h3>
+          <div class="date">2026-09-28</div>
+          <ul>
+            <li data-i18n="u210a">Opções completas de gráfico: títulos dos eixos, fonte, tamanho, posição da legenda, espessura da linha</li>
+            <li data-i18n="u210b">Interface reorganizada (seções recolhíveis, header limpo)</li>
+            <li data-i18n="u210c">Idioma PT / EN selecionável</li>
+            <li data-i18n="u210d">Nova aba Updates com patch notes</li>
+          </ul>
+        </li>
+        <li class="update-card">
+          <h3><span class="ver">v2.0.0</span> <span data-i18n="u200title">Moisture × ε' e θ por amostra</span></h3>
+          <div class="date">2026-09-23</div>
+          <ul>
+            <li data-i18n="u200a">Aba Moisture % × ε' (curva do modelo + pontos das amostras)</li>
+            <li data-i18n="u200b">θ (água volumétrica) editável individualmente por amostra</li>
+            <li data-i18n="u200c">Modelos Linear, Topp parametrizável e Mistura Refrativa</li>
+          </ul>
+        </li>
+        <li class="update-card">
+          <h3><span class="ver">v1.5.0</span> <span data-i18n="u150title">Estilos, zoom e modelos de solo</span></h3>
+          <div class="date">2026-09-22</div>
+          <ul>
+            <li data-i18n="u150a">Zoom/pan nos gráficos Chart.js + Reset Zoom</li>
+            <li data-i18n="u150b">Estilos por série: pontos, tamanho, tipo de linha</li>
+            <li data-i18n="u150c">Fórmulas de ε'/ε'' alinhadas ao artigo (CRIM, Debye, Topp)</li>
+          </ul>
+        </li>
+        <li class="update-card">
+          <h3><span class="ver">v1.0.0</span> <span data-i18n="u100title">Lançamento inicial</span></h3>
+          <div class="date">2026-09</div>
+          <ul>
+            <li data-i18n="u100a">Upload .s1p / .s2p, gráficos S11/S21/ε'/ε''</li>
+            <li data-i18n="u100b">Média de amostras, exportação Excel/PNG</li>
+            <li data-i18n="u100c">Módulo 3D de ajuste de superfície</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </div>
+
   <script>
     let store = []; 
     let vMode = 'S11';
@@ -641,15 +887,167 @@
     let mainChart = null;
     let avgChart = null;
     let moistureChart = null;
+    let currentLang = 'pt';
     const SPEED_LIGHT = 299792458;
+    const APP_VERSION = '2.1.0';
 
     const POINT_STYLES = ['circle', 'triangle', 'rect', 'rectRot', 'cross', 'crossRot', 'star'];
 
+    const I18N = {
+      pt: {
+        appTitle: 'S11, S21 & Analisador de Permissividade',
+        appSubtitle: 'S11/S21 + modelos de permissividade para solo',
+        cfgTitle: 'Parâmetros do modelo & eixos',
+        chartOptsTitle: 'Opções dos gráficos (eixos, fonte, legenda)',
+        tabViewer: 'Visualizador Individual',
+        tabAverage: 'Média de Amostras',
+        tabMoisture: 'Moisture % × ε\'',
+        tab3d: 'Ajuste de Superfície 3D',
+        tabUpdates: 'Updates',
+        optXTitle: 'Título eixo X',
+        optYTitle: 'Título eixo Y',
+        optTitleSize: 'Tamanho título eixos',
+        optTickSize: 'Tamanho números (ticks)',
+        optLegendPos: 'Posição da legenda',
+        optFont: 'Fonte',
+        optLegendSize: 'Tamanho legenda',
+        optLineWidth: 'Espessura da linha',
+        s21Max: 'S21 Máximo (dB)',
+        freqLabel: 'Frequência (GHz)',
+        yS11: 'S11 (dB)',
+        yS21: 'S21 (dB)',
+        yEr: "Permissividade Real (ε')",
+        yEi: "Permissividade Imaginária (ε'')",
+        yErAvg: "Média de Permissividade Real (ε')",
+        moistureX: 'Moisture content θ (%)',
+        moistureY: "Permissividade relativa ε'",
+        modelCurve: 'Modelo selecionado',
+        updatesTitle: 'Histórico de versões / Patch notes',
+        updatesIntro: 'Versão atual: v2.1.0',
+        u210title: 'UI, i18n, eixos editáveis e Updates',
+        u210a: 'Opções completas de gráfico: títulos dos eixos, fonte, tamanho, posição da legenda, espessura da linha',
+        u210b: 'Interface reorganizada (seções recolhíveis, header limpo)',
+        u210c: 'Idioma PT / EN selecionável',
+        u210d: 'Nova aba Updates com patch notes',
+        u200title: 'Moisture × ε\' e θ por amostra',
+        u200a: 'Aba Moisture % × ε\' (curva do modelo + pontos das amostras)',
+        u200b: 'θ (água volumétrica) editável individualmente por amostra',
+        u200c: 'Modelos Linear, Topp parametrizável e Mistura Refrativa',
+        u150title: 'Estilos, zoom e modelos de solo',
+        u150a: 'Zoom/pan nos gráficos Chart.js + Reset Zoom',
+        u150b: 'Estilos por série: pontos, tamanho, tipo de linha',
+        u150c: 'Fórmulas de ε\'/ε\'\' alinhadas ao artigo (CRIM, Debye, Topp)',
+        u100title: 'Lançamento inicial',
+        u100a: 'Upload .s1p / .s2p, gráficos S11/S21/ε\'/ε\'\'',
+        u100b: 'Média de amostras, exportação Excel/PNG',
+        u100c: 'Módulo 3D de ajuste de superfície'
+      },
+      en: {
+        appTitle: 'S11, S21 & Permittivity Analyzer',
+        appSubtitle: 'S11/S21 + soil permittivity mixing models',
+        cfgTitle: 'Model parameters & axis limits',
+        chartOptsTitle: 'Chart options (axes, font, legend)',
+        tabViewer: 'Individual Viewer',
+        tabAverage: 'Sample Average',
+        tabMoisture: 'Moisture % × ε\'',
+        tab3d: '3D Surface Fit',
+        tabUpdates: 'Updates',
+        optXTitle: 'X-axis title',
+        optYTitle: 'Y-axis title',
+        optTitleSize: 'Axis title size',
+        optTickSize: 'Tick label size',
+        optLegendPos: 'Legend position',
+        optFont: 'Font',
+        optLegendSize: 'Legend size',
+        optLineWidth: 'Line width',
+        s21Max: 'S21 Maximum (dB)',
+        freqLabel: 'Frequency (GHz)',
+        yS11: 'S11 (dB)',
+        yS21: 'S21 (dB)',
+        yEr: "Real permittivity (ε')",
+        yEi: "Imaginary permittivity (ε'')",
+        yErAvg: "Average real permittivity (ε')",
+        moistureX: 'Moisture content θ (%)',
+        moistureY: "Relative permittivity ε'",
+        modelCurve: 'Selected model',
+        updatesTitle: 'Version history / Patch notes',
+        updatesIntro: 'Current version: v2.1.0',
+        u210title: 'UI, i18n, editable axes & Updates',
+        u210a: 'Full chart options: axis titles, font, size, legend position, line width',
+        u210b: 'Cleaner UI (collapsible sections, header)',
+        u210c: 'PT / EN language toggle',
+        u210d: 'New Updates tab with patch notes',
+        u200title: 'Moisture × ε\' and per-sample θ',
+        u200a: 'Moisture % × ε\' tab (model curve + sample points)',
+        u200b: 'Per-sample volumetric water content θ',
+        u200c: 'Linear, parametric Topp and Refractive mixing models',
+        u150title: 'Styles, zoom and soil models',
+        u150a: 'Chart.js zoom/pan + Reset Zoom',
+        u150b: 'Per-series styles: points, size, line type',
+        u150c: 'ε\'/ε\'\' formulas aligned with the paper (CRIM, Debye, Topp)',
+        u100title: 'Initial release',
+        u100a: '.s1p / .s2p upload, S11/S21/ε\'/ε\'\' charts',
+        u100b: 'Sample averaging, Excel/PNG export',
+        u100c: '3D surface fitting module'
+      }
+    };
+
+    function t(key) {
+      return (I18N[currentLang] && I18N[currentLang][key]) || (I18N.pt[key]) || key;
+    }
+
+    function setLanguage(lang) {
+      currentLang = lang === 'en' ? 'en' : 'pt';
+      document.getElementById('lang-pt').classList.toggle('active', currentLang === 'pt');
+      document.getElementById('lang-en').classList.toggle('active', currentLang === 'en');
+      document.documentElement.lang = currentLang === 'pt' ? 'pt-BR' : 'en';
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (key && I18N[currentLang][key] != null) el.textContent = I18N[currentLang][key];
+      });
+      applyChartOptions();
+    }
+
+    function toggleCollapse(id) {
+      const body = document.getElementById(id + '-body');
+      const hdr = document.getElementById(id + '-toggle');
+      if (!body || !hdr) return;
+      body.classList.toggle('open');
+      hdr.classList.toggle('open', body.classList.contains('open'));
+    }
+
+    function getChartOpts() {
+      const xCustom = (document.getElementById('opt-x-title')?.value || '').trim();
+      const yCustom = (document.getElementById('opt-y-title')?.value || '').trim();
+      const titleSize = parseFloat(document.getElementById('opt-title-size')?.value) || 13;
+      const tickSize = parseFloat(document.getElementById('opt-tick-size')?.value) || 12;
+      const legendPos = document.getElementById('opt-legend-pos')?.value || 'top';
+      const fontFamily = document.getElementById('opt-font')?.value || 'Segoe UI';
+      const legendSize = parseFloat(document.getElementById('opt-legend-size')?.value) || 12;
+      const lineWidth = parseFloat(document.getElementById('opt-line-width')?.value) || 2;
+      return { xCustom, yCustom, titleSize, tickSize, legendPos, fontFamily, legendSize, lineWidth };
+    }
+
+    function defaultYLabel(mode, isAvg) {
+      if (mode === 'S11') return t('yS11');
+      if (mode === 'S21') return t('yS21');
+      if (mode === 'er') return isAvg ? t('yErAvg') : t('yEr');
+      return t('yEi');
+    }
+
+    function applyChartOptions() {
+      if (store.length) updateMainChart();
+      if (selectedAvgIndices.size) updateAverageResults();
+      if (document.getElementById('tab-moisture')?.style.display !== 'none' || moistureChart) {
+        try { updateMoistureChart(); } catch (e) {}
+      }
+    }
+
     const Y_AXIS_LABELS = {
-      'S11': 'S11 (dB)',
-      'S21': 'S21 (dB)',
-      'er': "Permissividade Real (ε')",
-      'ei': "Permissividade Imaginária (ε'')"
+      get S11() { return t('yS11'); },
+      get S21() { return t('yS21'); },
+      get er() { return t('yEr'); },
+      get ei() { return t('yEi'); }
     };
 
     // Dados Globais do Módulo 3D
@@ -661,11 +1059,13 @@
       document.getElementById('tab-average').style.display = t === 'average' ? 'block' : 'none';
       document.getElementById('tab-moisture').style.display = t === 'moisture' ? 'block' : 'none';
       document.getElementById('tab-3d').style.display = t === '3d' ? 'block' : 'none';
+      document.getElementById('tab-updates').style.display = t === 'updates' ? 'block' : 'none';
       
       document.getElementById('btn-tab-viewer').classList.toggle('active', t === 'viewer');
       document.getElementById('btn-tab-average').classList.toggle('active', t === 'average');
       document.getElementById('btn-tab-moisture').classList.toggle('active', t === 'moisture');
       document.getElementById('btn-tab-3d').classList.toggle('active', t === '3d');
+      document.getElementById('btn-tab-updates').classList.toggle('active', t === 'updates');
       
       if (t === 'average') renderAvgSelectors();
       if (t === 'moisture') updateMoistureChart();
@@ -1044,13 +1444,14 @@
         };
       }).filter(p => p.y != null && Number.isFinite(p.y));
 
+      const o = getChartOpts();
       const datasets = [
         {
-          label: 'Modelo selecionado',
+          label: t('modelCurve'),
           data: modelCurve,
           borderColor: '#94a3b8',
           backgroundColor: 'transparent',
-          borderWidth: 2,
+          borderWidth: o.lineWidth,
           borderDash: [6, 4],
           pointRadius: 0,
           pointHoverRadius: 0,
@@ -1075,6 +1476,9 @@
         });
       });
 
+      const xTitleM = o.xCustom || t('moistureX');
+      const yTitleM = o.yCustom || t('moistureY');
+      const showLegendM = o.legendPos !== 'none';
       moistureChart = new Chart(ctx.getContext('2d'), {
         type: 'scatter',
         data: { datasets },
@@ -1084,21 +1488,23 @@
           scales: {
             x: {
               type: 'linear',
-              title: { display: true, text: 'Moisture content θ (%)', color: '#1e293b', font: { weight: 'bold', size: 13 } },
+              title: { display: true, text: xTitleM, color: '#1e293b', font: { family: o.fontFamily, weight: 'bold', size: o.titleSize } },
               grid: { color: '#e2e8f0' },
-              ticks: { color: '#1e293b' },
+              ticks: { color: '#1e293b', font: { family: o.fontFamily, size: o.tickSize } },
               min: 0,
               max: 50
             },
             y: {
-              title: { display: true, text: "Permissividade relativa ε'", color: '#1e293b', font: { weight: 'bold', size: 13 } },
+              title: { display: true, text: yTitleM, color: '#1e293b', font: { family: o.fontFamily, weight: 'bold', size: o.titleSize } },
               grid: { color: '#e2e8f0' },
-              ticks: { color: '#1e293b' }
+              ticks: { color: '#1e293b', font: { family: o.fontFamily, size: o.tickSize } }
             }
           },
           plugins: {
             legend: {
-              labels: { color: '#1e293b', usePointStyle: true, boxWidth: 8, padding: 15 }
+              display: showLegendM,
+              position: showLegendM ? o.legendPos : 'top',
+              labels: { color: '#1e293b', usePointStyle: true, boxWidth: 8, padding: 15, font: { family: o.fontFamily, size: o.legendSize } }
             },
             tooltip: {
               callbacks: {
@@ -1182,6 +1588,10 @@
       const minFreq = parseFloat(document.getElementById('freq-min').value) || undefined;
       const maxFreq = parseFloat(document.getElementById('freq-max').value) || undefined;
       const yLimits = getYAxisLimits(vMode);
+      const o = getChartOpts();
+      const xTitle = o.xCustom || t('freqLabel');
+      const yTitle = o.yCustom || defaultYLabel(vMode, false);
+      const showLegend = o.legendPos !== 'none';
 
       mainChart = new Chart(ctx, {
         type: 'line',
@@ -1194,7 +1604,7 @@
               data: f.data.map(d => ({ x: d.freq / 1e9, y: vMode === 'S11' ? d.s11db : vMode === 'S21' ? d.s21db : vMode === 'er' ? d.er : d.ei })), 
               borderColor: f.color, 
               backgroundColor: f.color,
-              borderWidth: 2,
+              borderWidth: o.lineWidth,
               borderDash: Array.isArray(f.borderDash) ? f.borderDash : [],
               pointStyle: f.pointStyle || 'circle',
               pointRadius: radius,
@@ -1209,27 +1619,30 @@
           scales: { 
             x: { 
               type: 'linear', 
-              title: { display: true, text: 'Frequência (GHz)', color: '#1e293b', font: { weight: 'bold', size: 13 } }, 
+              title: { display: true, text: xTitle, color: '#1e293b', font: { family: o.fontFamily, weight: 'bold', size: o.titleSize } }, 
               grid: { color: '#e2e8f0' }, 
-              ticks: { color: '#1e293b' },
+              ticks: { color: '#1e293b', font: { family: o.fontFamily, size: o.tickSize } },
               min: minFreq,
               max: maxFreq
             }, 
             y: { 
-              title: { display: true, text: Y_AXIS_LABELS[vMode], color: '#1e293b', font: { weight: 'bold', size: 13 } },
+              title: { display: true, text: yTitle, color: '#1e293b', font: { family: o.fontFamily, weight: 'bold', size: o.titleSize } },
               grid: { color: '#e2e8f0' },
-              ticks: { color: '#1e293b' },
+              ticks: { color: '#1e293b', font: { family: o.fontFamily, size: o.tickSize } },
               min: yLimits.min,
               max: yLimits.max
             } 
           },
           plugins: { 
             legend: { 
+              display: showLegend,
+              position: showLegend ? o.legendPos : 'top',
               labels: { 
                 color: '#1e293b',
                 usePointStyle: true, 
                 boxWidth: 8,
-                padding: 15
+                padding: 15,
+                font: { family: o.fontFamily, size: o.legendSize }
               } 
             },
             zoom: {
@@ -1291,14 +1704,19 @@
 
       const ctx = document.getElementById('avg-canvas').getContext('2d');
       if (avgChart) avgChart.destroy();
+      const o = getChartOpts();
+      const xTitle = o.xCustom || t('freqLabel');
+      const yTitle = o.yCustom || defaultYLabel(aMode, true);
+      const showLegend = o.legendPos !== 'none';
       avgChart = new Chart(ctx, {
         type: 'line',
         data: { 
           datasets: [{ 
-            label: 'Média Calculada', 
+            label: currentLang === 'en' ? 'Calculated average' : 'Média Calculada', 
             data: avgs.map(a => ({ x: a.freq/1e9, y: aMode==='S11'?a.S11 : aMode==='S21'?a.S21 : aMode==='er'?a.er : a.ei })), 
             borderColor: '#3b82f6', 
             backgroundColor: 'rgba(59,130,246,0.1)',
+            borderWidth: o.lineWidth,
             pointStyle: 'circle',
             pointRadius: 4,
             fill: true 
@@ -1310,23 +1728,25 @@
           scales: { 
             x: { 
               type: 'linear', 
-              title: { display: true, text: 'Frequência (GHz)', color: '#1e293b', font: { weight: 'bold', size: 13 } },
+              title: { display: true, text: xTitle, color: '#1e293b', font: { family: o.fontFamily, weight: 'bold', size: o.titleSize } },
               grid: { color: '#e2e8f0' },
-              ticks: { color: '#1e293b' },
+              ticks: { color: '#1e293b', font: { family: o.fontFamily, size: o.tickSize } },
               min: minFreq,
               max: maxFreq
             },
             y: {
-              title: { display: true, text: 'Média de ' + Y_AXIS_LABELS[aMode], color: '#1e293b', font: { weight: 'bold', size: 13 } },
+              title: { display: true, text: yTitle, color: '#1e293b', font: { family: o.fontFamily, weight: 'bold', size: o.titleSize } },
               grid: { color: '#e2e8f0' },
-              ticks: { color: '#1e293b' },
+              ticks: { color: '#1e293b', font: { family: o.fontFamily, size: o.tickSize } },
               min: yLimits.min,
               max: yLimits.max
             }
           },
           plugins: {
             legend: {
-              labels: { color: '#1e293b' }
+              display: showLegend,
+              position: showLegend ? o.legendPos : 'top',
+              labels: { color: '#1e293b', font: { family: o.fontFamily, size: o.legendSize } }
             },
             zoom: {
               pan: { enabled: true, mode: 'xy', modifierKey: 'ctrl' },
@@ -1646,11 +2066,15 @@
       return x;
     }
 
-    // Inicializa visibilidade dos campos conforme o modelo selecionado
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', updateModelHints);
-    } else {
+    // Inicializa visibilidade dos campos e idioma
+    function bootUI() {
       updateModelHints();
+      setLanguage(currentLang || 'pt');
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootUI);
+    } else {
+      bootUI();
     }
   </script>
 </body>
