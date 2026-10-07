@@ -622,7 +622,7 @@
       <p class="subtitle" data-i18n="appSubtitle" style="margin-bottom:0">S11/S21 + modelos de permissividade para solo</p>
     </div>
     <div class="app-header-right">
-      <span class="version-badge">v2.6.5</span>
+      <span class="version-badge">v2.6.6</span>
       <div class="lang-switch" title="Language / Idioma">
         <button type="button" class="lang-btn active" id="lang-pt" onclick="setLanguage('pt')">PT</button>
         <button type="button" class="lang-btn" id="lang-en" onclick="setLanguage('en')">EN</button>
@@ -946,7 +946,7 @@
 
       <div class="ph-guide">
         <div class="ph-step"><div class="ph-step-num">1</div><strong>Prepare os dados</strong><span>Tenha as medições de S11, S21, frequência, profundidade e o pH medido em laboratório.</span></div>
-        <div class="ph-step"><div class="ph-step-num">2</div><strong>Importe o arquivo</strong><span>Use CSV ou Excel. O botão de template mostra exatamente o formato aceito.</span></div>
+        <div class="ph-step"><div class="ph-step-num">2</div><strong>Importe o arquivo</strong><span>Use CSV, Excel (.xlsx/.xls) ou .xl. Se o arquivo tiver varredura de frequência, o sistema reduz para 1 amostra (~4,42 GHz).</span></div>
         <div class="ph-step"><div class="ph-step-num">3</div><strong>Preencha o que falta</strong><span>Informe profundidade, umidade (θ) e pH medido. ε′, ε″ e tanδ são calculados automaticamente pelo mesmo modelo Topp do site.</span></div>
         <div class="ph-step"><div class="ph-step-num">4</div><strong>Gere os gráficos</strong><span>Clique em <strong>Calcular Topp + gerar modelos</strong>. O programa faz os cálculos e executa RFR, SVR e 5-fold.</span></div>
       </div>
@@ -962,14 +962,14 @@
       <div class="ph-actions" style="margin-top:15px">
         <button class="action-btn" onclick="downloadPHTemplate()">Baixar template CSV</button>
         <button class="action-btn ph-sample-btn" onclick="downloadPHSample()">Baixar arquivo de exemplo</button>
-        <button class="action-btn" onclick="document.getElementById('ph-file-in').click()">Importar CSV / Excel</button>
+        <button class="action-btn" onclick="document.getElementById('ph-file-in').click()">Importar CSV / Excel / XL</button>
         <button class="action-btn" onclick="document.getElementById('ph-touchstone-in').click()">Importar S1P / S2P</button>
         <button class="action-btn" onclick="loadPHFromViewer()">Usar S1P/S2P do Viewer</button>
         <label style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#0b0e14;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12.5px;color:var(--text-secondary);">
           <input type="checkbox" id="ph-import-all-freq" style="width:15px;height:15px;accent-color:var(--accent);">
           Importar todos os pontos de frequência (não recomendado)
         </label>
-        <input id="ph-file-in" type="file" hidden accept=".csv,.xlsx,.xls" onchange="handlePHFile(this.files); this.value=''">
+        <input id="ph-file-in" type="file" hidden accept=".csv,.xlsx,.xls,.xl,.XLS,.XLSX,.XL" onchange="handlePHFile(this.files); this.value=''">
         <input id="ph-touchstone-in" type="file" hidden multiple accept=".s1p,.s2p,.S1P,.S2P" onchange="handlePHTouchstone(this.files); this.value=''">
       </div>
       <div class="ph-note" style="margin-top:10px"><strong>Touchstone:</strong> S1P → S11; S2P → S11 e S21. Por padrão o sistema importa <strong>1 amostra por arquivo</strong> (ponto de ressonância ≈ mínimo de S11 / 4,42 GHz), como no artigo (N≈98). <strong>Novas importações são adicionadas</strong> às amostras já existentes (não substituem). Não use “todos os pontos de frequência” para o ML — isso gera centenas de linhas com pH quase igual e o gráfico colapsa (R² negativo). Cada amostra precisa de um <strong>pH diferente</strong> (faixa 5,0–6,5).</div>
@@ -2379,21 +2379,156 @@
     }
     document.addEventListener('paste',handlePHPaste);
 
+    function phNormalizeFreqGHz(v){
+      // Aceita Hz, kHz, MHz ou GHz e devolve GHz. Corrige casos tipo 4.42e9 → 4.42.
+      const x = phNum(v);
+      if(x==null || !(x>0)) return null;
+      if(x >= 1e8) return x / 1e9;          // Hz (ex.: 4.42e9)
+      if(x >= 1e5) return x / 1e6;          // kHz impropriamente grande / Hz baixo
+      if(x >= 100) return x / 1e3;          // MHz (ex.: 4420)
+      return x;                              // já em GHz (ex.: 4.42)
+    }
+    function phAggregateSpreadsheetRows(mapped){
+      // Se o XL/CSV tem varredura de frequência (muitos pontos, mesmos metadados),
+      // reduz para 1 linha por amostra no mínimo de S11 / ~4,42 GHz.
+      if(!mapped.length) return {rows:[], aggregated:false, groups:0};
+      const freqs = mapped.map(r=>phNum(r.frequency)).filter(v=>v!=null);
+      const uniqueF = new Set(freqs.map(v=>v.toFixed(4))).size;
+      // Agrupa por identidade da amostra (tudo menos s11/s21/frequency/eps)
+      const keyOf = (r)=>[
+        r.depth??'', r.weight??'', r.moisture??'', r.pH??'',
+        r._sample??'', r._group??'', r.id??''
+      ].join('|');
+      // Se quase todas as linhas têm o mesmo "grupo" mas frequências diferentes → sweep
+      const groups = new Map();
+      mapped.forEach(r=>{
+        // chave sem id numérico sequencial se for só índice
+        const k = [r.depth??'', r.weight??'', r.moisture??'', r.pH??'', r._sample??'', r._group??''].join('|');
+        if(!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(r);
+      });
+      const multi = [...groups.values()].filter(g=>g.length>=3 && new Set(g.map(r=>(phNum(r.frequency)||0).toFixed(4))).size>=3);
+      // Agregar se: (a) grupos com varredura OU (b) muitas linhas com freq variando e poucos metadados distintos
+      const shouldAgg = multi.length>0 || (mapped.length>=20 && uniqueF>=10 && groups.size <= Math.max(1, Math.ceil(mapped.length/5)));
+      if(!shouldAgg){
+        return {rows:mapped, aggregated:false, groups:groups.size};
+      }
+      const out=[];
+      const targetF=4.42;
+      const workGroups = multi.length ? multi : [...groups.values()];
+      // Se não há multi mas shouldAgg, agrupa tudo como um único sweep por arquivo só se 1 grupo
+      const list = multi.length ? multi : (groups.size===1 ? [...groups.values()] : [...groups.values()].filter(g=>g.length>=2));
+      const finalList = list.length ? list : [...groups.values()];
+      finalList.forEach(g=>{
+        let best=null, bestScore=Infinity;
+        for(const r of g){
+          const f=phNum(r.frequency), s11=phNum(r.s11);
+          if(f==null) continue;
+          const score = (s11!=null?s11:0) + 0.01*Math.abs(f-targetF);
+          if(score<bestScore){ bestScore=score; best={...r}; }
+        }
+        if(!best) best={...g[0]};
+        // Preferir ~4.42 se existir ponto próximo
+        let near=null, nearD=Infinity;
+        for(const r of g){
+          const f=phNum(r.frequency);
+          if(f==null) continue;
+          const d=Math.abs(f-targetF);
+          if(d<nearD){ nearD=d; near=r; }
+        }
+        if(near && nearD<=0.15) best={...near}; // dentro de 150 MHz de 4.42 GHz
+        // se S11 existir, ainda preferir ressonância se estiver perto de 4.42
+        if(phNum(best.s11)!=null){
+          for(const r of g){
+            const f=phNum(r.frequency), s11=phNum(r.s11);
+            if(f==null||s11==null) continue;
+            if(Math.abs(f-targetF)<=0.3 && s11 < (phNum(best.s11)??0)) best={...r};
+          }
+        }
+        best._nFreqPoints = g.length;
+        out.push(best);
+      });
+      return {rows:out, aggregated:true, groups:out.length, original:mapped.length};
+    }
     function handlePHFile(files){
-      if(!files.length)return; const f=files[0]; const reader=new FileReader();
-      reader.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:f.name.toLowerCase().endsWith('.csv')?'string':'array'});const sh=wb.Sheets[wb.SheetNames[0]];const raw=XLSX.utils.sheet_to_json(sh,{defval:''});
-        const mapped=raw.map((r,i)=>{const get=(...keys)=>{for(const k of keys){const hit=Object.keys(r).find(x=>x.trim().toLowerCase()===k.toLowerCase());if(hit!=null)return r[hit];}return '';};return {id:0,s11:get('s11','S11 (dB)'),s21:get('s21','S21 (dB)'),frequency:get('frequency','freq','frequency (ghz)'),depth:get('depth','d'),weight:get('weight','peso'),moisture:get('moisture','water','water content','umidade'),epsReal:get('epsReal','epsilon real','ε\'','eps\''),epsImag:get('epsImag','epsilon imag','ε\'\''),sigma:get('sigma','σb'),tanDelta:get('tanDelta','tanδ','loss tangent'),pH:get('pH','ph','soil ph'),pHEmpirical:get('pHEmpirical','pH calculado','ph empirical')};});
-        if(!mapped.length){ setPHStatus('Arquivo sem linhas válidas.','warn'); return; }
-        // ACUMULA em vez de substituir
-        const baseId = phRows.length;
-        mapped.forEach((r,i)=>{ r.id = baseId + i + 1; });
-        phRows = phRows.concat(mapped);
-        phResults=null;phPermittivityReady=false;phEmpiricalPHReady=false;clearPHCharts();
-        const pb=document.getElementById('ph-run-models-btn');if(pb)pb.disabled=true;
-        renderPHTable();
-        setPHStatus(`+${mapped.length} amostra(s) importada(s) de ${f.name}. Total na tabela: ${phRows.length}. Pode importar mais arquivos para continuar adicionando.`,'ok');
-      }catch(err){setPHStatus('Erro ao importar o arquivo: '+err.message,'err');}};
-      if(f.name.toLowerCase().endsWith('.csv'))reader.readAsText(f);else reader.readAsArrayBuffer(f);
+      if(!files.length)return;
+      const f=files[0];
+      const name=(f.name||'').toLowerCase();
+      const reader=new FileReader();
+      reader.onload=e=>{
+        try{
+          const isCsv = name.endsWith('.csv');
+          // .xl / .xls / .xlsx — SheetJS lê workbook binário ou string
+          const wb=XLSX.read(e.target.result,{type:isCsv?'string':'array', cellDates:true});
+          const sh=wb.Sheets[wb.SheetNames[0]];
+          const raw=XLSX.utils.sheet_to_json(sh,{defval:''});
+          if(!raw.length){ setPHStatus('Arquivo sem linhas válidas.','warn'); return; }
+
+          const mapped=raw.map((r,i)=>{
+            const get=(...keys)=>{
+              for(const k of keys){
+                const hit=Object.keys(r).find(x=>String(x).trim().toLowerCase()===k.toLowerCase());
+                if(hit!=null && r[hit]!=='' && r[hit]!=null) return r[hit];
+              }
+              return '';
+            };
+            // também tenta cabeçalhos em português / variações comuns de lab
+            const freqRaw = get('frequency','freq','frequency (ghz)','freq (ghz)','f (ghz)','f_ghz','frequencia','frequência','f');
+            const freqGHz = phNormalizeFreqGHz(freqRaw);
+            return {
+              id:0,
+              s11:get('s11','S11 (dB)','s11 (db)','s11_db','return loss'),
+              s21:get('s21','S21 (dB)','s21 (db)','s21_db'),
+              frequency: freqGHz!=null ? Number(freqGHz.toFixed(6)) : '',
+              depth:get('depth','d','profundidade','profundidade (cm)','depth (cm)'),
+              weight:get('weight','peso','mass','massa','massa (g)','weight (g)'),
+              moisture:get('moisture','water','water content','umidade','umidade (%)','theta','θ','water%'),
+              epsReal:get('epsReal','epsilon real',"ε'",'eps\'','er','e_real','eps_r'),
+              epsImag:get('epsImag','epsilon imag',"ε''",'ei','e_imag','eps_i'),
+              sigma:get('sigma','σb','condutividade','conductivity'),
+              tanDelta:get('tanDelta','tanδ','loss tangent','tand','tan_delta'),
+              pH:get('pH','ph','soil ph','ph medido','ph_lab'),
+              pHEmpirical:get('pHEmpirical','pH calculado','ph empirical'),
+              _sample:get('sample','amostra','sample_id','amostra_id','batch','lote'),
+              _group:get('group','grupo','condition','condicao')
+            };
+          }).filter(r=> phNum(r.s11)!=null || phNum(r.frequency)!=null || phNum(r.pH)!=null || phNum(r.epsReal)!=null);
+
+          if(!mapped.length){ setPHStatus('Nenhuma linha utilizável (preciso de S11, frequência, pH ou ε′).','warn'); return; }
+
+          const agg = phAggregateSpreadsheetRows(mapped);
+          let rows = agg.rows;
+
+          // Se dados já estão completos, marcar permissividade pronta
+          const hasEps = rows.filter(r=>phNum(r.epsReal)!=null && phNum(r.epsImag)!=null).length;
+          const hasPH = rows.filter(r=>phNum(r.pH)!=null).length;
+          const hasS11 = rows.filter(r=>phNum(r.s11)!=null).length;
+
+          const baseId = phRows.length;
+          rows.forEach((r,i)=>{ r.id = baseId + i + 1; });
+          phRows = phRows.concat(rows);
+          phResults=null;
+          phEmpiricalPHReady=false;
+          if(hasEps === rows.length && rows.length>0) phPermittivityReady=true;
+          else phPermittivityReady=false;
+          clearPHCharts();
+          const pb=document.getElementById('ph-run-models-btn');
+          if(pb) pb.disabled = !(phPermittivityReady && hasPH===rows.length);
+          renderPHFeatureList();
+          renderPHTable();
+
+          let msg = `+${rows.length} amostra(s) de ${f.name}. Total na tabela: ${phRows.length}.`;
+          if(agg.aggregated) msg += ` Varredura reduzida: ${agg.original} linhas → ${rows.length} amostra(s) (ponto ~4,42 GHz / ressonância).`;
+          if(hasEps===rows.length) msg += ' ε′/ε″ já presentes — etapa 2 opcional.';
+          if(hasPH===rows.length) msg += ' pH já presente — pode rodar RFR/SVR após conferir profundidade.';
+          else msg += ' Preencha pH (ou calcule o empírico) e profundidade se faltarem.';
+          setPHStatus(msg,'ok');
+        }catch(err){
+          setPHStatus('Erro ao importar o arquivo: '+err.message,'err');
+        }
+      };
+      if(name.endsWith('.csv')) reader.readAsText(f);
+      else reader.readAsArrayBuffer(f);
     }
 
     // Calcula ε′/ε″ usando exatamente a mesma lógica dos três modelos da aba principal.
@@ -2426,7 +2561,10 @@
       let calculated=0, skipped=0, calculatedPH=0;
       phRows.forEach(r=>{
         r.moisture=water.toFixed(4);
-        const fGHz=phNum(r.frequency), fHz=fGHz==null?null:fGHz*1e9;
+        // Normaliza frequência para GHz (evita 4.42e9 ser tratado como GHz)
+        const fGHz=phNormalizeFreqGHz(r.frequency);
+        if(fGHz!=null) r.frequency=Number(fGHz.toFixed(6));
+        const fHz=fGHz==null?null:fGHz*1e9;
         if(fHz==null||fHz<=0){skipped++;return;}
         const epsW=debyeWater(fHz,tc);
         const condTerm=(Number.isFinite(sigma)?sigma:0.05)/(2*Math.PI*fHz*EPS0);
