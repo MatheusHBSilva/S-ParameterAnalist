@@ -622,7 +622,7 @@
       <p class="subtitle" data-i18n="appSubtitle" style="margin-bottom:0">S11/S21 + modelos de permissividade para solo</p>
     </div>
     <div class="app-header-right">
-      <span class="version-badge">v2.6.6</span>
+      <span class="version-badge">v2.6.8</span>
       <div class="lang-switch" title="Language / Idioma">
         <button type="button" class="lang-btn active" id="lang-pt" onclick="setLanguage('pt')">PT</button>
         <button type="button" class="lang-btn" id="lang-en" onclick="setLanguage('en')">EN</button>
@@ -2458,73 +2458,188 @@
       reader.onload=e=>{
         try{
           const isCsv = name.endsWith('.csv');
-          // .xl / .xls / .xlsx — SheetJS lê workbook binário ou string
           const wb=XLSX.read(e.target.result,{type:isCsv?'string':'array', cellDates:true});
           const sh=wb.Sheets[wb.SheetNames[0]];
-          const raw=XLSX.utils.sheet_to_json(sh,{defval:''});
-          if(!raw.length){ setPHStatus('Arquivo sem linhas válidas.','warn'); return; }
+          // Ler como matriz para tolerar cabeçalhos irregulars (ex.: linha de unidades, coluna de amostra)
+          const matrix=XLSX.utils.sheet_to_json(sh,{header:1, defval:''});
+          if(!matrix.length){ setPHStatus('Arquivo sem linhas.','warn'); return; }
 
-          const mapped=raw.map((r,i)=>{
-            const get=(...keys)=>{
-              for(const k of keys){
-                const hit=Object.keys(r).find(x=>String(x).trim().toLowerCase()===k.toLowerCase());
-                if(hit!=null && r[hit]!=='' && r[hit]!=null) return r[hit];
-              }
-              return '';
-            };
-            // também tenta cabeçalhos em português / variações comuns de lab
-            const freqRaw = get('frequency','freq','frequency (ghz)','freq (ghz)','f (ghz)','f_ghz','frequencia','frequência','f');
-            const freqGHz = phNormalizeFreqGHz(freqRaw);
-            return {
+          // Localizar linha de cabeçalho (contém S11 ou Freq ou pH)
+          const norm = (v)=>String(v??'').trim().toLowerCase().replace(/\s+/g,' ');
+          let headerRow = -1;
+          for(let i=0;i<Math.min(matrix.length,15);i++){
+            const cells = matrix[i].map(norm);
+            if(cells.some(c=>c==='s11'||c==='s21'||c==='freq'||c==='frequency'||c==='ph'||c==='pH'.toLowerCase())){
+              headerRow = i; break;
+            }
+          }
+          if(headerRow<0) headerRow = 0;
+
+          const headers = matrix[headerRow].map(h=>norm(h));
+          // Mapear índices de coluna (formato do lab: S11, S21, Freq, DEPTH, W(g), con%, pH)
+          const findCol = (...aliases)=>{
+            for(const a of aliases){
+              const i = headers.findIndex(h=>h===a || h.includes(a));
+              if(i>=0) return i;
+            }
+            return -1;
+          };
+          let cS11=findCol('s11');
+          let cS21=findCol('s21');
+          let cFreq=findCol('freq','frequency','f (ghz)','f_ghz');
+          let cDepth=findCol('depth','profundidade','d');
+          let cWeight=findCol('w(g)','weight','peso','massa','w (g)');
+          let cMoist=findCol('con%','con %','moisture','umidade','water','theta','θ','con');
+          let cPH=findCol('ph','pH'.toLowerCase(),'soil ph');
+          let cSample=findCol('sample','amostra','id');
+          // Se a 1ª coluna não tem cabeçalho mas tem S65, S66... usar como amostra
+          if(cSample<0 && headers[0]==='') cSample = 0;
+
+          // Fallback posicional do formato do artigo/lab (col A=id, B=S11, C=S21, D=Freq, E=DEPTH, F=W, G=con%, H=pH)
+          if(cS11<0 && cFreq<0 && headers.length>=7){
+            cSample=0; cS11=1; cS21=2; cFreq=3; cDepth=4; cWeight=5; cMoist=6; cPH=7;
+          }
+
+          const mapped=[];
+          for(let i=headerRow+1;i<matrix.length;i++){
+            const row = matrix[i];
+            if(!row || !row.length) continue;
+            const cellStr = row.map(v=>String(v??'').trim()).join(' ');
+            // pular linhas de unidade / vazias
+            if(/\(db\)|\(ghz\)/i.test(cellStr) && !/\d/.test(cellStr.replace(/[^\d.-]/g,''))) continue;
+            const get = (idx)=> (idx>=0 && idx<row.length) ? row[idx] : '';
+            const s11 = phNum(get(cS11));
+            const s21 = phNum(get(cS21));
+            const freq = phNormalizeFreqGHz(get(cFreq));
+            const depth = phNum(get(cDepth));
+            const weight = phNum(get(cWeight));
+            let moist = phNum(get(cMoist));
+            // con% no arquivo vem como fração 0.2–0.8 → converter para %
+            if(moist!=null && moist<=1) moist = moist*100;
+            const pH = phNum(get(cPH));
+            const sample = String(get(cSample)??'').trim();
+            // exige pelo menos S11 ou pH + frequência
+            if(s11==null && pH==null) continue;
+            if(s11==null && freq==null && pH==null) continue;
+            // linha só com texto
+            if(s11==null && s21==null && freq==null && depth==null && pH==null) continue;
+
+            mapped.push({
               id:0,
-              s11:get('s11','S11 (dB)','s11 (db)','s11_db','return loss'),
-              s21:get('s21','S21 (dB)','s21 (db)','s21_db'),
-              frequency: freqGHz!=null ? Number(freqGHz.toFixed(6)) : '',
-              depth:get('depth','d','profundidade','profundidade (cm)','depth (cm)'),
-              weight:get('weight','peso','mass','massa','massa (g)','weight (g)'),
-              moisture:get('moisture','water','water content','umidade','umidade (%)','theta','θ','water%'),
-              epsReal:get('epsReal','epsilon real',"ε'",'eps\'','er','e_real','eps_r'),
-              epsImag:get('epsImag','epsilon imag',"ε''",'ei','e_imag','eps_i'),
-              sigma:get('sigma','σb','condutividade','conductivity'),
-              tanDelta:get('tanDelta','tanδ','loss tangent','tand','tan_delta'),
-              pH:get('pH','ph','soil ph','ph medido','ph_lab'),
-              pHEmpirical:get('pHEmpirical','pH calculado','ph empirical'),
-              _sample:get('sample','amostra','sample_id','amostra_id','batch','lote'),
-              _group:get('group','grupo','condition','condicao')
-            };
-          }).filter(r=> phNum(r.s11)!=null || phNum(r.frequency)!=null || phNum(r.pH)!=null || phNum(r.epsReal)!=null);
+              s11: s11!=null?s11:'',
+              s21: s21!=null?s21:'',
+              frequency: freq!=null?Number(freq.toFixed(6)):'',
+              depth: depth!=null?depth:'',
+              weight: weight!=null?weight:'',
+              moisture: moist!=null?Number(moist.toFixed(4)):'',
+              epsReal:'', epsImag:'', sigma:'', tanDelta:'',
+              pH: pH!=null?pH:'',
+              pHEmpirical:'',
+              _sample: sample,
+              _group:''
+            });
+          }
 
-          if(!mapped.length){ setPHStatus('Nenhuma linha utilizável (preciso de S11, frequência, pH ou ε′).','warn'); return; }
+          if(!mapped.length){
+            setPHStatus('Nenhuma linha de dados encontrada. Verifique se há colunas S11, Freq, DEPTH, W(g), con%, pH.','warn');
+            return;
+          }
 
-          const agg = phAggregateSpreadsheetRows(mapped);
-          let rows = agg.rows;
-
-          // Se dados já estão completos, marcar permissividade pronta
-          const hasEps = rows.filter(r=>phNum(r.epsReal)!=null && phNum(r.epsImag)!=null).length;
-          const hasPH = rows.filter(r=>phNum(r.pH)!=null).length;
-          const hasS11 = rows.filter(r=>phNum(r.s11)!=null).length;
+          // NÃO agregar quando cada linha já é uma amostra (pH/S11 variam) — caso do arquivo 50g 20–80%
+          const uniquePH = new Set(mapped.map(r=>String(r.pH))).size;
+          const uniqueS11 = new Set(mapped.map(r=>String(r.s11))).size;
+          let rows = mapped;
+          let aggNote = '';
+          if(mapped.length>=20 && uniquePH<=2 && uniqueS11<=3){
+            const agg = phAggregateSpreadsheetRows(mapped);
+            if(agg.aggregated){
+              rows = agg.rows;
+              aggNote = ` Varredura reduzida: ${agg.original}→${rows.length}.`;
+            }
+          }
 
           const baseId = phRows.length;
-          rows.forEach((r,i)=>{ r.id = baseId + i + 1; });
+          rows.forEach((r,i)=>{ r.id = baseId+i+1; });
           phRows = phRows.concat(rows);
-          phResults=null;
-          phEmpiricalPHReady=false;
-          if(hasEps === rows.length && rows.length>0) phPermittivityReady=true;
-          else phPermittivityReady=false;
-          clearPHCharts();
-          const pb=document.getElementById('ph-run-models-btn');
-          if(pb) pb.disabled = !(phPermittivityReady && hasPH===rows.length);
+          phResults=null; phEmpiricalPHReady=false; clearPHCharts();
+
+          const hasPH = rows.every(r=>phNum(r.pH)!=null);
+          const hasMoist = rows.every(r=>phNum(r.moisture)!=null);
+          const hasS11 = rows.every(r=>phNum(r.s11)!=null);
+          const hasFreq = rows.every(r=>phNum(r.frequency)!=null);
+          const hasDepth = rows.every(r=>phNum(r.depth)!=null);
+
+          // Automação: se tem umidade + frequência, calcular ε′/ε″ com Topp
+          let autoEps = 0;
+          if(hasMoist && hasFreq){
+            const methodEl=document.getElementById('ph-perm-method');
+            if(methodEl) methodEl.value='topp';
+            // média da umidade para o campo de UI (só referência)
+            const avgM = rows.reduce((s,r)=>s+(phNum(r.moisture)||0),0)/rows.length;
+            const wEl=document.getElementById('ph-water-percent');
+            if(wEl) wEl.value = avgM.toFixed(2);
+
+            const EPS0=8.854187817e-12;
+            const sigma=phNum(document.getElementById('soil-sigma')?.value);
+            const tempC=phNum(document.getElementById('soil-temp')?.value);
+            const a=phNum(document.getElementById('topp-a')?.value), b=phNum(document.getElementById('topp-b')?.value);
+            const c=phNum(document.getElementById('topp-c')?.value), d=phNum(document.getElementById('topp-d')?.value);
+            const aa=Number.isFinite(a)?a:3.03, bb=Number.isFinite(b)?b:9.3, cc=Number.isFinite(c)?c:146.0, dd=Number.isFinite(d)?d:-76.7;
+            const tc=Number.isFinite(tempC)?tempC:20;
+            const sig=Number.isFinite(sigma)?sigma:0.05;
+            const coeffIds=['ph-a0','ph-a1','ph-a2','ph-a3','ph-a4','ph-a5','ph-a6'];
+            const coeff=coeffIds.map(id=>phNum(document.getElementById(id)?.value));
+            const hasCoeff=coeff.every(Number.isFinite);
+
+            // calcular só nas linhas recém-importadas
+            for(let i=baseId;i<phRows.length;i++){
+              const r=phRows[i];
+              let theta=phNum(r.moisture); if(theta!=null&&theta>1) theta/=100;
+              if(theta==null) continue;
+              const fGHz=phNormalizeFreqGHz(r.frequency);
+              if(fGHz==null||fGHz<=0) continue;
+              const fHz=fGHz*1e9;
+              const epsW=debyeWater(fHz,tc);
+              const condTerm=sig/(2*Math.PI*fHz*EPS0);
+              r.epsReal=aa+bb*theta+cc*theta*theta+dd*theta*theta*theta;
+              r.epsImag=theta*(condTerm+epsW.im);
+              r.sigma=sig;
+              r.tanDelta=r.epsReal!==0?r.epsImag/r.epsReal:null;
+              if(hasCoeff){
+                const phEmp=coeff[0]+coeff[1]*r.epsReal+coeff[2]*r.epsImag+coeff[3]*sig+coeff[4]*sig*r.epsReal+coeff[5]*sig+coeff[6]*tc;
+                r.pHEmpirical=Number.isFinite(phEmp)?phEmp.toFixed(4):'';
+              }
+              autoEps++;
+            }
+            phPermittivityReady = phRows.some(r=>phNum(r.epsReal)!=null);
+          } else {
+            phPermittivityReady = phRows.some(r=>phNum(r.epsReal)!=null);
+          }
+
           renderPHFeatureList();
+          document.querySelectorAll('#ph-feature-list input').forEach(cb=>{
+            cb.checked=['s11','s21','frequency','depth','moisture','epsReal','epsImag','tanDelta'].includes(cb.value);
+          });
           renderPHTable();
 
-          let msg = `+${rows.length} amostra(s) de ${f.name}. Total na tabela: ${phRows.length}.`;
-          if(agg.aggregated) msg += ` Varredura reduzida: ${agg.original} linhas → ${rows.length} amostra(s) (ponto ~4,42 GHz / ressonância).`;
-          if(hasEps===rows.length) msg += ' ε′/ε″ já presentes — etapa 2 opcional.';
-          if(hasPH===rows.length) msg += ' pH já presente — pode rodar RFR/SVR após conferir profundidade.';
-          else msg += ' Preencha pH (ou calcule o empírico) e profundidade se faltarem.';
+          const readyForML = hasPH && phPermittivityReady && hasS11;
+          const btn=document.getElementById('ph-run-models-btn');
+          if(btn) btn.disabled = !readyForML;
+
+          let msg=`+${rows.length} amostra(s) de “${f.name}”. Total: ${phRows.length}.${aggNote}`;
+          if(hasS11&&hasFreq&&hasDepth&&hasPH) msg+=' Dados do lab reconhecidos (S11, S21, Freq, DEPTH, W, con%, pH).';
+          if(autoEps) msg+=` ε′/ε″ calculados automaticamente (Topp) em ${autoEps} linha(s).`;
+          if(readyForML) msg+=' Pronto para RFR/SVR — clique em “Gerar RFR + SVR + 5-fold”.';
+          else {
+            if(!hasPH) msg+=' Falta pH em algumas linhas.';
+            if(!phPermittivityReady) msg+=' Calcule ε′/ε″ na etapa 2.';
+          }
           setPHStatus(msg,'ok');
+          const pe=document.getElementById('ph-perm-status');
+          if(pe){ pe.className='ph-status ok'; pe.textContent=autoEps?`Importação automática: ${rows.length} amostras, ε′/ε″ preenchidos.`:`${rows.length} amostras importadas.`; }
         }catch(err){
-          setPHStatus('Erro ao importar o arquivo: '+err.message,'err');
+          console.error(err);
+          setPHStatus('Erro ao importar: '+err.message,'err');
         }
       };
       if(name.endsWith('.csv')) reader.readAsText(f);
@@ -2803,20 +2918,153 @@
     function phChartOpts(){const n=id=>{const v=phNum(document.getElementById(id)?.value);return v==null?undefined:v;};return {x:(document.getElementById('ph-opt-x-title')?.value||'Measured Soil pH'),y:(document.getElementById('ph-opt-y-title')?.value||'Predicted Soil pH'),ts:n('ph-opt-title-size')||13,tick:n('ph-opt-tick-size')||12,legend:document.getElementById('ph-opt-legend-pos')?.value||'top',font:document.getElementById('ph-opt-font')?.value||'Segoe UI',ls:n('ph-opt-legend-size')||12,lw:n('ph-opt-line-width')||2,xmin:n('ph-opt-x-min'),xmax:n('ph-opt-x-max'),ymin:n('ph-opt-y-min'),ymax:n('ph-opt-y-max')};}
     function phChartBase(o){return {responsive:true,maintainAspectRatio:false,scales:{x:{type:'linear',min:o.xmin,max:o.xmax,title:{display:true,text:o.x,color:'#1e293b',font:{family:o.font,weight:'bold',size:o.ts}},ticks:{color:'#1e293b',font:{family:o.font,size:o.tick}},grid:{color:'#e2e8f0'}},y:{min:o.ymin,max:o.ymax,title:{display:true,text:o.y,color:'#1e293b',font:{family:o.font,weight:'bold',size:o.ts}},ticks:{color:'#1e293b',font:{family:o.font,size:o.tick}},grid:{color:'#e2e8f0'}}},plugins:{legend:{display:o.legend!=='none',position:o.legend==='none'?'top':o.legend,labels:{color:'#1e293b',font:{family:o.font,size:o.ls}}},zoom:{pan:{enabled:true,mode:'xy',modifierKey:'ctrl'},zoom:{wheel:{enabled:true},pinch:{enabled:true},drag:{enabled:true,backgroundColor:'rgba(59,130,246,0.15)',borderColor:'rgba(59,130,246,0.6)',borderWidth:1},mode:'xy'}}}};}
     function parityLine(y){const lo=Math.min(...y),hi=Math.max(...y);return [{x:lo,y:lo},{x:hi,y:hi}];}
+    function phMetricsBoxPlugin(metrics, color){
+      // Caixa no estilo do artigo com R², RMSE e MAE dentro do gráfico
+      return {
+        id: 'phMetricsBox_'+Math.random().toString(36).slice(2,8),
+        afterDraw(chart){
+          const {ctx, chartArea} = chart;
+          if(!chartArea || !metrics) return;
+          const lines = [
+            'R\u00B2 = ' + (Number.isFinite(metrics.r2) ? metrics.r2.toFixed(4) : '\u2014'),
+            'RMSE = ' + (Number.isFinite(metrics.rmse) ? metrics.rmse.toFixed(4) : '\u2014'),
+            'MAE = ' + (Number.isFinite(metrics.mae) ? metrics.mae.toFixed(4) : '\u2014')
+          ];
+          ctx.save();
+          ctx.font = '600 13px Segoe UI, Arial, sans-serif';
+          const padX = 12, padY = 10, lineH = 18;
+          const textW = Math.max(...lines.map(t => ctx.measureText(t).width));
+          const boxW = textW + padX * 2;
+          const boxH = lines.length * lineH + padY * 2 - 4;
+          const x = chartArea.left + 12;
+          const y = chartArea.top + 12;
+          ctx.fillStyle = 'rgba(255,255,255,0.94)';
+          ctx.strokeStyle = color || '#334155';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          if (typeof ctx.roundRect === 'function') ctx.roundRect(x, y, boxW, boxH, 6);
+          else ctx.rect(x, y, boxW, boxH);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#0f172a';
+          ctx.textBaseline = 'top';
+          lines.forEach((t, i) => ctx.fillText(t, x + padX, y + padY + i * lineH));
+          ctx.restore();
+        }
+      };
+    }
     function renderPHCharts(){
-      if(!phResults)return; const o=phChartOpts(), y=phResults.y, r=phResults.cv.rfr, s=phResults.cv.svr;
-      [phRFRChart,phRFRParityChart,phSVRChart,phCompareChart].forEach(c=>{if(c)c.destroy();});
-      // Escala no estilo do artigo: eixo cobre os dados com margem ~0.3–0.5
-      const allV=[...y,...r,...s].filter(Number.isFinite);
-      const lo=Math.min(...allV), hi=Math.max(...allV), pad=Math.max(0.3, (hi-lo)*0.15);
-      if(o.xmin==null) o.xmin=lo-pad; if(o.xmax==null) o.xmax=hi+pad;
-      if(o.ymin==null) o.ymin=lo-pad; if(o.ymax==null) o.ymax=hi+pad;
-      const common=phChartBase(o);
-      const parityData=[{x:o.xmin,y:o.xmin},{x:o.xmax,y:o.xmax}];
-      phRFRChart=new Chart(document.getElementById('ph-rfr-canvas').getContext('2d'),{type:'scatter',data:{datasets:[{label:'RFR Model (N='+y.length+')',data:y.map((v,i)=>({x:v,y:r[i],fold:phResults.cv.fold[i]})),borderWidth:o.lw,pointRadius:4,backgroundColor:'#3b82f6',borderColor:'#2563eb'},{label:'1:1 Parity Line',data:parityData,type:'line',borderColor:'#111827',borderDash:[7,5],borderWidth:o.lw,pointRadius:0}]},options:common});
-      phRFRParityChart=new Chart(document.getElementById('ph-rfr-parity-canvas').getContext('2d'),{type:'scatter',data:{datasets:[{label:'RFR — five-fold predictions',data:y.map((v,i)=>({x:v,y:r[i]})),pointRadius:4,backgroundColor:'#3b82f6',borderColor:'#2563eb',borderWidth:o.lw},{label:'1:1 Parity Line',data:parityData,type:'line',borderColor:'#111827',borderDash:[7,5],borderWidth:o.lw,pointRadius:0}]},options:common});
-      phSVRChart=new Chart(document.getElementById('ph-svr-canvas').getContext('2d'),{type:'scatter',data:{datasets:[{label:'SVR — five-fold predictions',data:y.map((v,i)=>({x:v,y:s[i]})),pointRadius:4,backgroundColor:'#a855f7',borderColor:'#7e22ce',borderWidth:o.lw},{label:'1:1 Parity Line',data:parityData,type:'line',borderColor:'#dc2626',borderDash:[7,5],borderWidth:o.lw,pointRadius:0}]},options:common});
-      phCompareChart=new Chart(document.getElementById('ph-compare-canvas').getContext('2d'),{type:'bar',data:{labels:['R²','RMSE','MAE'],datasets:[{label:'RFR',data:[phResults.rfrMetrics.r2,phResults.rfrMetrics.rmse,phResults.rfrMetrics.mae],backgroundColor:'#3b82f6'},{label:'SVR',data:[phResults.svrMetrics.r2,phResults.svrMetrics.rmse,phResults.svrMetrics.mae],backgroundColor:'#a855f7'}]},options:{...common,scales:{...common.scales,y:{...common.scales.y,min:undefined,title:{display:true,text:'Metric',font:{family:o.font,size:o.ts},color:'#1e293b'}}}}});
+      if(!phResults) return;
+      const o = phChartOpts();
+      const y = phResults.y;
+      const r = phResults.cv.rfr;
+      const s = phResults.cv.svr;
+      const mr = phResults.rfrMetrics;
+      const ms = phResults.svrMetrics;
+      [phRFRChart, phRFRParityChart, phSVRChart, phCompareChart].forEach(c => { if (c) c.destroy(); });
+
+      const allV = [...y, ...r, ...s].filter(Number.isFinite);
+      if (!allV.length) { setPHStatus('Sem predições válidas para plotar.', 'warn'); return; }
+      const lo = Math.min(...allV), hi = Math.max(...allV);
+      const pad = Math.max(0.3, (hi - lo) * 0.15 || 0.3);
+      if (o.xmin == null) o.xmin = lo - pad;
+      if (o.xmax == null) o.xmax = hi + pad;
+      if (o.ymin == null) o.ymin = lo - pad;
+      if (o.ymax == null) o.ymax = hi + pad;
+      const common = phChartBase(o);
+      const parityData = [{ x: o.xmin, y: o.xmin }, { x: o.xmax, y: o.xmax }];
+      const scatterPts = (pred) => y.map((v, i) => ({ x: v, y: pred[i] }))
+        .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+
+      const elRFR = document.getElementById('ph-rfr-canvas');
+      const elParity = document.getElementById('ph-rfr-parity-canvas');
+      const elSVR = document.getElementById('ph-svr-canvas');
+      const elCmp = document.getElementById('ph-compare-canvas');
+
+      if (elRFR) {
+        phRFRChart = new Chart(elRFR.getContext('2d'), {
+          type: 'scatter',
+          data: { datasets: [
+            { label: 'RFR Model (N=' + y.length + ')', data: scatterPts(r), borderWidth: o.lw, pointRadius: 5, pointHoverRadius: 7, backgroundColor: '#3b82f6', borderColor: '#2563eb' },
+            { label: '1:1 Parity Line', data: parityData, type: 'line', borderColor: '#111827', borderDash: [7, 5], borderWidth: o.lw, pointRadius: 0 }
+          ]},
+          options: common,
+          plugins: [phMetricsBoxPlugin(mr, '#2563eb')]
+        });
+      }
+
+      if (elParity) {
+        phRFRParityChart = new Chart(elParity.getContext('2d'), {
+          type: 'scatter',
+          data: { datasets: [
+            { label: 'RFR — five-fold predictions', data: scatterPts(r), pointRadius: 5, backgroundColor: '#3b82f6', borderColor: '#2563eb', borderWidth: o.lw },
+            { label: '1:1 Parity Line', data: parityData, type: 'line', borderColor: '#111827', borderDash: [7, 5], borderWidth: o.lw, pointRadius: 0 }
+          ]},
+          options: common,
+          plugins: [phMetricsBoxPlugin(mr, '#2563eb')]
+        });
+      }
+
+      if (elSVR) {
+        phSVRChart = new Chart(elSVR.getContext('2d'), {
+          type: 'scatter',
+          data: { datasets: [
+            { label: 'SVR — five-fold predictions', data: scatterPts(s), pointRadius: 5, backgroundColor: '#a855f7', borderColor: '#7e22ce', borderWidth: o.lw },
+            { label: '1:1 Parity Line', data: parityData, type: 'line', borderColor: '#dc2626', borderDash: [7, 5], borderWidth: o.lw, pointRadius: 0 }
+          ]},
+          options: common,
+          plugins: [phMetricsBoxPlugin(ms, '#7e22ce')]
+        });
+      }
+
+      // Barras de comparação: eixo X CATEGÓRICO (não linear) — corrige gráfico vazio
+      if (elCmp) {
+        const r2r = Number.isFinite(mr.r2) ? mr.r2 : 0;
+        const r2s = Number.isFinite(ms.r2) ? ms.r2 : 0;
+        const rmseR = Number.isFinite(mr.rmse) ? mr.rmse : 0;
+        const rmseS = Number.isFinite(ms.rmse) ? ms.rmse : 0;
+        const maeR = Number.isFinite(mr.mae) ? mr.mae : 0;
+        const maeS = Number.isFinite(ms.mae) ? ms.mae : 0;
+        phCompareChart = new Chart(elCmp.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: ['R\u00B2', 'RMSE', 'MAE'],
+            datasets: [
+              { label: 'RFR', data: [r2r, rmseR, maeR], backgroundColor: '#3b82f6', borderColor: '#2563eb', borderWidth: 1, borderRadius: 6 },
+              { label: 'SVR', data: [r2s, rmseS, maeS], backgroundColor: '#a855f7', borderColor: '#7e22ce', borderWidth: 1, borderRadius: 6 }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                type: 'category',
+                title: { display: true, text: 'Métrica', color: '#1e293b', font: { family: o.font, weight: 'bold', size: o.ts } },
+                ticks: { color: '#1e293b', font: { family: o.font, size: o.tick } },
+                grid: { color: '#e2e8f0', display: false }
+              },
+              y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Valor', color: '#1e293b', font: { family: o.font, weight: 'bold', size: o.ts } },
+                ticks: { color: '#1e293b', font: { family: o.font, size: o.tick } },
+                grid: { color: '#e2e8f0' }
+              }
+            },
+            plugins: {
+              legend: { display: true, position: 'top', labels: { color: '#1e293b', font: { family: o.font, size: o.ls } } },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => {
+                    const v = ctx.parsed.y;
+                    return ctx.dataset.label + ': ' + (Number.isFinite(v) ? v.toFixed(4) : '\u2014');
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
     }
     function applyPHChartOptions(){if(phResults)renderPHCharts();}
     function resetPHZoom(name){const map={phRFRChart:phRFRChart,phRFRParityChart:phRFRParityChart,phSVRChart:phSVRChart,phCompareChart:phCompareChart};const c=map[name];if(c&&typeof c.resetZoom==='function')c.resetZoom();}
