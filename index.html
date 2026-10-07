@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>S1P / S2P NRW Dielétrico Pro</title>
+  <title>S1P / S2P NRW Dielétrico Pro + pH ML</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -512,6 +512,106 @@
       font-size: 13.5px;
     }
     .update-card li { margin-bottom: 4px; }
+
+    /* ==========================================
+       MÓDULO pH / MACHINE LEARNING
+       ========================================== */
+    .ph-kpi-grid {
+      display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin:15px 0;
+    }
+    .ph-kpi { background:#0f1117; border:1px solid var(--border); border-radius:10px; padding:14px; }
+    .ph-kpi .k-label { color:var(--text-secondary); font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
+    .ph-kpi .k-value { color:white; font-size:20px; font-weight:700; margin-top:4px; }
+    .ph-formula-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px; }
+    .ph-formula { background:#0f1117; border:1px solid var(--border); border-radius:10px; padding:14px; }
+    .ph-formula code { color:var(--warning); font-family:"Times New Roman",serif; font-size:15px; white-space:normal; }
+    .ph-note { color:var(--text-secondary); font-size:12.5px; line-height:1.55; margin-top:8px; }
+    .ph-chart-grid { display:grid; grid-template-columns:1fr; gap:20px; }
+    .ph-chart-title-row { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .ph-model-badge { display:inline-flex; padding:4px 9px; border-radius:7px; border:1px solid var(--border); background:#0f1117; font-size:11px; color:var(--text-secondary); }
+    .ph-data-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; }
+    .ph-feature-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:8px; }
+    .ph-feature-item { display:flex; align-items:center; gap:8px; padding:9px 10px; background:#0f1117; border:1px solid var(--border); border-radius:8px; font-size:12.5px; }
+    .ph-feature-item input { accent-color:var(--accent); }
+    .ph-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .ph-status { margin-top:12px; padding:10px 12px; border-radius:8px; background:#0f1117; border:1px solid var(--border); color:var(--text-secondary); font-size:12.5px; }
+    .ph-status.ok { border-color:rgba(16,185,129,.5); color:#a7f3d0; }
+    .ph-status.warn { border-color:rgba(250,204,21,.5); color:#fde68a; }
+    .ph-status.err { border-color:rgba(239,68,68,.5); color:#fecaca; }
+    .ph-table-input { width:100%; min-width:82px; padding:6px 7px !important; font-size:12px !important; }
+    .ph-table-wrap { max-height:520px; overflow:auto; border:1px solid var(--border); border-radius:12px; }
+    .ph-table-wrap table { min-width:1050px; }
+    .ph-table-wrap td, .ph-table-wrap th { white-space:nowrap; }
+    .ph-small { font-size:11px; color:var(--text-secondary); }
+    .ph-guide { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-top:16px; }
+    .ph-step { position:relative; background:#0f1117; border:1px solid var(--border); border-radius:12px; padding:16px; min-height:130px; }
+    .ph-step-num { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--accent); color:#fff; font-weight:800; font-size:13px; margin-bottom:10px; }
+    .ph-step strong { display:block; color:#fff; font-size:14px; margin-bottom:6px; }
+    .ph-step span { color:var(--text-secondary); font-size:12.5px; line-height:1.5; }
+    .ph-required { margin-top:14px; padding:12px 14px; border:1px solid rgba(59,130,246,.35); background:rgba(59,130,246,.08); border-radius:10px; color:var(--text-secondary); font-size:12.5px; line-height:1.55; }
+    .ph-required strong { color:#fff; }
+    .ph-data-check { display:flex; flex-wrap:wrap; gap:7px; margin-top:8px; }
+    .ph-chip { display:inline-flex; align-items:center; padding:4px 8px; border-radius:6px; background:#111827; border:1px solid var(--border); color:#dbeafe; font-size:11px; }
+    .ph-main-action { font-size:14px; font-weight:700; padding:11px 16px; border-color:var(--accent); background:rgba(59,130,246,.10); }
+    .ph-main-action:disabled { opacity:.45; cursor:not-allowed; filter:grayscale(.35); }
+    .ph-calc-box { margin:14px 0 16px; padding:14px; border:1px solid var(--border); border-radius:12px; background:#0f1117; }
+    .ph-calc-grid { display:grid; grid-template-columns:1.2fr 1fr 1.7fr; gap:12px; align-items:end; }
+    .ph-calc-action-field .action-btn { width:100%; min-height:42px; }
+    @media (max-width:900px){ .ph-calc-grid{grid-template-columns:1fr;} }
+    .ph-sample-btn { border-color:rgba(16,185,129,.45); }
+    .ph-edit-tools { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin:10px 0; padding:10px 12px; border:1px dashed var(--border); border-radius:9px; background:#0b0e14; color:var(--text-secondary); font-size:12px; }
+    .ph-table-input { min-width:92px; background:#1e2533 !important; color:#f1f5f9 !important; border:1px solid #475569 !important; }
+    .ph-table-input:focus { outline:2px solid rgba(59,130,246,.55); outline-offset:-2px; background:#243044 !important; color:#ffffff !important; }
+    .ph-table-input::selection { background:#3b82f6; color:#ffffff; }
+    .ph-table-input::-moz-selection { background:#3b82f6; color:#ffffff; }
+    .ph-fill-input {
+      background:#ffffff !important;
+      color:#0f172a !important;
+      border:1px solid #94a3b8 !important;
+      border-radius:8px !important;
+      padding:8px 10px !important;
+      font-size:13px !important;
+      font-weight:600;
+      min-width:100px;
+      width:110px;
+    }
+    .ph-fill-input:focus {
+      outline:2px solid #3b82f6 !important;
+      outline-offset:0;
+      background:#f8fafc !important;
+      color:#0f172a !important;
+      border-color:#3b82f6 !important;
+    }
+    .ph-fill-input::selection { background:#3b82f6; color:#ffffff; }
+    .ph-fill-input::-moz-selection { background:#3b82f6; color:#ffffff; }
+    .ph-fill-input::placeholder { color:#64748b !important; opacity:1; font-weight:500; }
+    .ph-coeff-box {
+      margin:14px 0 16px;
+      padding:16px;
+      border:1px solid rgba(250,204,21,.35);
+      border-radius:12px;
+      background:rgba(250,204,21,.06);
+    }
+    .ph-coeff-box .sec-label { color:#fde68a; margin-bottom:6px; }
+    .ph-coeff-box .ph-note { margin-bottom:12px; }
+    .ph-coeff-box code { color:var(--warning); }
+    .ph-coeff-box .ph-data-grid { margin-top:4px; }
+    .ph-coeff-box input[type="number"] {
+      background:#0f1117 !important;
+      color:#fef9c3 !important;
+      border:1px solid #a16207 !important;
+      font-weight:600;
+    }
+    .ph-coeff-box input[type="number"]:focus {
+      border-color:#facc15 !important;
+      outline:2px solid rgba(250,204,21,.4);
+    }
+    .ph-table-wrap th { position:sticky; top:0; z-index:2; background:#111827; }
+    .ph-advanced-note { color:var(--text-secondary); font-size:12px; margin:0 0 14px; line-height:1.5; }
+    .ph-results-note { margin:0 0 12px; color:var(--text-secondary); font-size:12.5px; line-height:1.5; }
+    @media(max-width:900px){ .ph-guide{grid-template-columns:1fr 1fr;} .ph-data-grid{grid-template-columns:1fr 1fr;} }
+    @media(max-width:600px){ .ph-guide{grid-template-columns:1fr;} }
+    @media(max-width:900px){ .ph-data-grid{grid-template-columns:1fr 1fr;} }
   </style>
 </head>
 <body>
@@ -522,7 +622,7 @@
       <p class="subtitle" data-i18n="appSubtitle" style="margin-bottom:0">S11/S21 + modelos de permissividade para solo</p>
     </div>
     <div class="app-header-right">
-      <span class="version-badge">v2.1.0</span>
+      <span class="version-badge">v2.6.5</span>
       <div class="lang-switch" title="Language / Idioma">
         <button type="button" class="lang-btn active" id="lang-pt" onclick="setLanguage('pt')">PT</button>
         <button type="button" class="lang-btn" id="lang-en" onclick="setLanguage('en')">EN</button>
@@ -539,9 +639,9 @@
     <div class="input-field">
       <label class="sec-label">Modelo de Permissividade</label>
       <select id="perm-model" onchange="syncAndRecalculate(); updateModelHints()">
+        <option value="topp" selected>Topp (empírico)</option>
         <option value="refractive">Mistura Refrativa (CRIM)</option>
         <option value="linear">Linear (ε_d + θ·ε_ω)</option>
-        <option value="topp">Topp (empírico)</option>
       </select>
     </div>
     <div class="input-field">
@@ -670,6 +770,7 @@
     <div class="tab" id="btn-tab-average" onclick="setTab('average')" data-i18n="tabAverage">Média de Amostras</div>
     <div class="tab" id="btn-tab-moisture" onclick="setTab('moisture')" data-i18n="tabMoisture">Moisture % × ε'</div>
     <div class="tab" id="btn-tab-3d" onclick="setTab('3d')" data-i18n="tab3d">Ajuste de Superfície 3D</div>
+    <div class="tab" id="btn-tab-ph" onclick="setTab('ph')" data-i18n="tabPH">Estudo de pH / ML</div>
     <div class="tab" id="btn-tab-updates" onclick="setTab('updates')" data-i18n="tabUpdates">Updates</div>
   </div>
 
@@ -833,11 +934,237 @@
     </div>
   </div>
 
+
+  <div id="tab-ph" style="display:none">
+    <div class="panel">
+      <div class="control-row">
+        <div>
+          <span class="sec-label" data-i18n="phTitle">Estudo de pH por Microwave Sensor + Machine Learning</span>
+          <div class="ph-note">Fluxo automático: <strong>S1P/S2P → Topp → ε′/ε″/tanδ → RFR/SVR → gráficos</strong>. Você só precisa informar os dados experimentais que o arquivo não possui.</div>
+        </div>
+      </div>
+
+      <div class="ph-guide">
+        <div class="ph-step"><div class="ph-step-num">1</div><strong>Prepare os dados</strong><span>Tenha as medições de S11, S21, frequência, profundidade e o pH medido em laboratório.</span></div>
+        <div class="ph-step"><div class="ph-step-num">2</div><strong>Importe o arquivo</strong><span>Use CSV ou Excel. O botão de template mostra exatamente o formato aceito.</span></div>
+        <div class="ph-step"><div class="ph-step-num">3</div><strong>Preencha o que falta</strong><span>Informe profundidade, umidade (θ) e pH medido. ε′, ε″ e tanδ são calculados automaticamente pelo mesmo modelo Topp do site.</span></div>
+        <div class="ph-step"><div class="ph-step-num">4</div><strong>Gere os gráficos</strong><span>Clique em <strong>Calcular Topp + gerar modelos</strong>. O programa faz os cálculos e executa RFR, SVR e 5-fold.</span></div>
+      </div>
+
+      <div class="ph-required">
+        <strong>Formato recomendado para começar:</strong>
+        <div class="ph-data-check">
+          <span class="ph-chip">S11 (dB)</span><span class="ph-chip">S21 (dB)</span><span class="ph-chip">Frequência (GHz)</span><span class="ph-chip">Profundidade d (cm)</span><span class="ph-chip">pH medido</span>
+        </div>
+        <div style="margin-top:8px">Para as profundidades do seu estudo: <strong>50 g → 1,9–2,5 cm</strong> e <strong>100 g → 1,9–4,5 cm</strong>. Campos como ε′, ε″, σb, umidade e tanδ são opcionais e podem ser usados como features adicionais.</div>
+      </div>
+
+      <div class="ph-actions" style="margin-top:15px">
+        <button class="action-btn" onclick="downloadPHTemplate()">Baixar template CSV</button>
+        <button class="action-btn ph-sample-btn" onclick="downloadPHSample()">Baixar arquivo de exemplo</button>
+        <button class="action-btn" onclick="document.getElementById('ph-file-in').click()">Importar CSV / Excel</button>
+        <button class="action-btn" onclick="document.getElementById('ph-touchstone-in').click()">Importar S1P / S2P</button>
+        <button class="action-btn" onclick="loadPHFromViewer()">Usar S1P/S2P do Viewer</button>
+        <label style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#0b0e14;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12.5px;color:var(--text-secondary);">
+          <input type="checkbox" id="ph-import-all-freq" style="width:15px;height:15px;accent-color:var(--accent);">
+          Importar todos os pontos de frequência (não recomendado)
+        </label>
+        <input id="ph-file-in" type="file" hidden accept=".csv,.xlsx,.xls" onchange="handlePHFile(this.files); this.value=''">
+        <input id="ph-touchstone-in" type="file" hidden multiple accept=".s1p,.s2p,.S1P,.S2P" onchange="handlePHTouchstone(this.files); this.value=''">
+      </div>
+      <div class="ph-note" style="margin-top:10px"><strong>Touchstone:</strong> S1P → S11; S2P → S11 e S21. Por padrão o sistema importa <strong>1 amostra por arquivo</strong> (ponto de ressonância ≈ mínimo de S11 / 4,42 GHz), como no artigo (N≈98). <strong>Novas importações são adicionadas</strong> às amostras já existentes (não substituem). Não use “todos os pontos de frequência” para o ML — isso gera centenas de linhas com pH quase igual e o gráfico colapsa (R² negativo). Cada amostra precisa de um <strong>pH diferente</strong> (faixa 5,0–6,5).</div>
+    </div>
+
+    <div class="panel">
+      <div class="control-row">
+        <div><span class="sec-label">2. Dados das amostras</span><div class="ph-note">Primeiro informe a água da mistura e escolha o método de permissividade. O botão abaixo reaproveita <strong>exatamente os três métodos de ε′/ε″ já existentes no site</strong> e grava os resultados na planilha.</div></div>
+        <div class="ph-actions"><button class="action-btn" onclick="addPHRow()">+ Amostra</button><button class="action-btn" onclick="addPHRows(10)">+ 10 amostras</button><button class="action-btn" onclick="clearPHData()">Limpar dados</button><button class="action-btn" onclick="togglePHAdvancedTable()">Campos avançados</button></div>
+      </div>
+
+      <div class="ph-calc-box">
+        <div class="ph-calc-grid">
+          <div class="input-field">
+            <label class="sec-label">Método para ε′ e ε″</label>
+            <select id="ph-perm-method">
+              <option value="topp">Topp (empírico)</option>
+              <option value="refractive">Mistura Refrativa (CRIM)</option>
+              <option value="linear">Linear (εd + θ·εω)</option>
+            </select>
+          </div>
+          <div class="input-field">
+            <label class="sec-label">% de água na mistura</label>
+            <input id="ph-water-percent" type="number" min="0" max="100" step="0.01" placeholder="Ex.: 20">
+          </div>
+          <div class="input-field ph-calc-action-field">
+            <label class="sec-label">Cálculo</label>
+            <button id="ph-calc-perm-btn" class="action-btn ph-main-action" onclick="calculatePHPermittivity()">Calcular ε′, ε″ e preparar pH</button>
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px 12px;background:#0b0e14;border:1px solid rgba(16,185,129,.35);border-radius:10px;cursor:pointer;user-select:none;">
+          <input type="checkbox" id="ph-use-empirical-as-target" checked style="width:18px;height:18px;accent-color:#10b981;">
+          <span style="color:#a7f3d0;font-size:13px;line-height:1.4"><strong>Usar pH empírico como pH medido</strong> — copia o valor calculado (a₀…a₆) para a coluna <em>pH medido</em>, que é o alvo do RFR/SVR. Desmarque se você já tiver pH de laboratório.</span>
+        </label>
+        <div id="ph-perm-status" class="ph-status">Informe a % de água e clique no botão para preencher ε′/ε″.</div>
+      </div>
+
+      <div class="ph-edit-tools">
+        <div><strong>Edição rápida:</strong> clique numa célula e edite normalmente. Também é possível colar um bloco copiado do Excel.</div>
+        <div class="ph-actions">
+          <input id="ph-fill-depth" class="ph-fill-input" placeholder="Profundidade cm">
+          <button class="action-btn" onclick="fillPHColumn('depth','ph-fill-depth')">Aplicar d a todas</button>
+          <input id="ph-fill-weight" class="ph-fill-input" placeholder="Massa (g)">
+          <button class="action-btn" onclick="fillPHColumn('weight','ph-fill-weight')">Aplicar massa a todas</button>
+          <input id="ph-fill-ph" class="ph-fill-input" placeholder="pH medido">
+          <button class="action-btn" onclick="fillPHColumn('pH','ph-fill-ph')">Aplicar pH a todas</button>
+          <button class="action-btn" onclick="normalizePHIds()">Renumerar</button>
+          <button class="action-btn" style="border-color:rgba(16,185,129,.5);color:#a7f3d0" onclick="applyEmpiricalPHAsTarget()">Usar pH empírico → pH medido</button>
+        </div>
+      </div>
+      <div class="ph-table-wrap"><table id="ph-data-table"></table></div>
+      <div class="ph-note" style="margin-top:10px"><strong>Importante:</strong> os coeficientes a₀…a₆ abaixo já vêm preenchidos (calibração de exemplo, faixa pH 5,0–6,5). Ao calcular ε′/ε″ na etapa 2, a coluna <strong>pH calculado (artigo)</strong> é gerada automaticamente. Com a opção <strong>Usar pH empírico como pH medido</strong> marcada, o valor calculado vai direto para o alvo do RFR/SVR. Massa típica: 50&nbsp;g ou 100&nbsp;g; profundidade: 50&nbsp;g → 1,9–2,5&nbsp;cm · 100&nbsp;g → 1,9–4,5&nbsp;cm.</div>
+
+      <div class="ph-coeff-box">
+        <div class="sec-label">Coeficientes a₀…a₆ da equação de pH (já preenchidos — edite se quiser)</div>
+        <div class="ph-note">Equação: <code>pH = a₀ + a₁·ε′ + a₂·ε″ + a₃·σ<sub>b</sub> + a₄·σ<sub>b</sub>·ε′ + a₅·σ<sub>s</sub> + a₆·T</code>. Valores de exemplo alinhados à faixa 5–6,5 do artigo (os números oficiais não foram publicados no texto).</div>
+        <div class="ph-data-grid">
+          <div class="input-field"><label class="sec-label">a₀</label><input id="ph-a0" type="number" step="any" value="4.80"></div>
+          <div class="input-field"><label class="sec-label">a₁ (ε′)</label><input id="ph-a1" type="number" step="any" value="0.055"></div>
+          <div class="input-field"><label class="sec-label">a₂ (ε″)</label><input id="ph-a2" type="number" step="any" value="0.120"></div>
+          <div class="input-field"><label class="sec-label">a₃ (σb)</label><input id="ph-a3" type="number" step="any" value="-0.40"></div>
+          <div class="input-field"><label class="sec-label">a₄ (σb·ε′)</label><input id="ph-a4" type="number" step="any" value="-0.020"></div>
+          <div class="input-field"><label class="sec-label">a₅ (σs)</label><input id="ph-a5" type="number" step="any" value="0.15"></div>
+          <div class="input-field"><label class="sec-label">a₆ (T °C)</label><input id="ph-a6" type="number" step="any" value="0.020"></div>
+        </div>
+        <div class="ph-actions" style="margin-top:12px">
+          <button class="action-btn" onclick="resetPHCoefficients()">Restaurar a₀…a₆ de exemplo</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="collapse-header" id="ph-config-toggle" onclick="toggleCollapse('ph-config')">
+        <span>Avançado — features e parâmetros dos modelos</span><span class="chevron">▼</span>
+      </div>
+      <div class="collapse-body" id="ph-config-body">
+        <p class="ph-advanced-note">Para uma primeira análise, deixe a configuração padrão. As features recomendadas pelo artigo são S11, S21, frequência e profundidade; a frequência já representa a informação necessária para ω.</p>
+        <div class="sec-label">Features usadas pelos modelos</div>
+        <div id="ph-feature-list" class="ph-feature-list"></div>
+        <div class="sec-label" style="margin-top:20px">Coeficientes a₀…a₆</div>
+        <div class="ph-note">Os coeficientes da equação de pH ficam no <strong>bloco amarelo</strong> da seção “Dados das amostras”, já com valores padrão. Edite-os lá se precisar.</div>
+        <div class="sec-label" style="margin-top:20px">Parâmetros</div>
+        <div class="ph-data-grid">
+          <div class="input-field"><label class="sec-label">Folds</label><input id="ph-folds" type="number" value="5" min="2" max="10" step="1"></div>
+          <div class="input-field"><label class="sec-label">RFR — árvores</label><input id="ph-rf-trees" type="number" value="100" min="10" max="500" step="10"></div>
+          <div class="input-field"><label class="sec-label">RFR — profundidade máxima</label><input id="ph-rf-depth" type="number" value="7" min="1" max="20" step="1"></div>
+          <div class="input-field"><label class="sec-label">RFR — mínimo por folha</label><input id="ph-rf-leaf" type="number" value="2" min="1" max="20" step="1"></div>
+          <div class="input-field"><label class="sec-label">SVR — C</label><input id="ph-svr-c" type="number" value="10" min="0.01" step="0.5"></div>
+          <div class="input-field"><label class="sec-label">SVR — ε</label><input id="ph-svr-eps" type="number" value="0.05" min="0" step="0.01"></div>
+          <div class="input-field"><label class="sec-label">SVR — γ</label><input id="ph-svr-gamma" type="number" value="0.15" min="0.0001" step="0.01"></div>
+          <div class="input-field"><label class="sec-label">Seed</label><input id="ph-seed" type="number" value="42" step="1"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="control-row">
+        <div><span class="sec-label">3. Executar análise</span><div class="ph-note">Depois de calcular ε′/ε″ na etapa 2, preencha profundidade e <strong>pH medido</strong> e execute RFR, SVR e 5-fold.</div></div>
+        <button id="ph-run-models-btn" class="action-btn ph-main-action" onclick="runPHModels()" disabled>Gerar RFR + SVR + 5-fold</button>
+      </div>
+      <div id="ph-status" class="ph-status">Aguardando dados experimentais.</div>
+    </div>
+
+    <div class="panel">
+      <div class="control-row">
+        <div><span class="sec-label">4. Resultados</span><p class="ph-results-note">O gráfico principal é o <strong>RFR com validação 5-fold</strong>. Compare R², RMSE e MAE para avaliar o desempenho. Quanto mais próximos os pontos estiverem da linha 1:1, melhor a previsão.</p></div>
+        <div class="ph-actions"><button class="action-btn" onclick="exportPHPredictTable()" style="color:var(--success);">Exportar resultados Excel</button></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="collapse-header" id="ph-chartopt-toggle" onclick="toggleCollapse('ph-chartopt')">
+        <span data-i18n="phChartOpts">Avançado — personalização dos gráficos</span><span class="chevron">▼</span>
+      </div>
+      <div class="collapse-body" id="ph-chartopt-body">
+        <div class="chart-opts-grid">
+          <div class="input-field"><label class="sec-label">Título eixo X</label><input id="ph-opt-x-title" value="Measured Soil pH (Chemical Calibration)" oninput="applyPHChartOptions()"></div>
+          <div class="input-field"><label class="sec-label">Título eixo Y</label><input id="ph-opt-y-title" value="Predicted Soil pH" oninput="applyPHChartOptions()"></div>
+          <div class="input-field"><label class="sec-label">Tamanho título</label><input id="ph-opt-title-size" type="number" value="13" min="8" max="28" oninput="applyPHChartOptions()"></div>
+          <div class="input-field"><label class="sec-label">Tamanho ticks</label><input id="ph-opt-tick-size" type="number" value="12" min="8" max="24" oninput="applyPHChartOptions()"></div>
+          <div class="input-field"><label class="sec-label">Legenda</label><select id="ph-opt-legend-pos" onchange="applyPHChartOptions()"><option value="top">Top</option><option value="bottom">Bottom</option><option value="left">Left</option><option value="right">Right</option><option value="none">None</option></select></div>
+          <div class="input-field"><label class="sec-label">Fonte</label><select id="ph-opt-font" onchange="applyPHChartOptions()"><option>Segoe UI</option><option>Arial</option><option>Helvetica</option><option>Times New Roman</option><option>Courier New</option><option>Georgia</option></select></div>
+          <div class="input-field"><label class="sec-label">Tamanho legenda</label><input id="ph-opt-legend-size" type="number" value="12" min="8" max="20" oninput="applyPHChartOptions()"></div>
+          <div class="input-field"><label class="sec-label">Espessura linha</label><input id="ph-opt-line-width" type="number" value="2" min="1" max="6" step="0.5" oninput="applyPHChartOptions()"></div>
+          <div class="input-field"><label class="sec-label">X mínimo</label><input id="ph-opt-x-min" type="number" placeholder="auto" step="0.1" oninput="applyPHChartOptions()"></div>
+          <div class="input-field"><label class="sec-label">X máximo</label><input id="ph-opt-x-max" type="number" placeholder="auto" step="0.1" oninput="applyPHChartOptions()"></div>
+          <div class="input-field"><label class="sec-label">Y mínimo</label><input id="ph-opt-y-min" type="number" placeholder="auto" step="0.1" oninput="applyPHChartOptions()"></div>
+          <div class="input-field"><label class="sec-label">Y máximo</label><input id="ph-opt-y-max" type="number" placeholder="auto" step="0.1" oninput="applyPHChartOptions()"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="collapse-header" id="ph-formula-toggle" onclick="toggleCollapse('ph-formula')">
+        <span data-i18n="phFormulaTitle">Avançado — fórmulas e metodologia do artigo</span><span class="chevron">▼</span>
+      </div>
+      <div class="collapse-body" id="ph-formula-body">
+        <div class="ph-formula-grid">
+          <div class="ph-formula"><strong>pH químico</strong><br><code>pH = −log[H⁺]</code><div class="ph-note">Relação apresentada no artigo para a concentração de íons H⁺.</div></div>
+          <div class="ph-formula"><strong>Permissividade complexa</strong><br><code>ε* = ε′ − j(ε″ + σ<sub>b</sub>/(2πfε₀))</code><div class="ph-note">Relaciona ε′, ε″ e condutividade bulk.</div></div>
+          <div class="ph-formula"><strong>Teor de água</strong><br><code>θ = −0.053 + 0.0292ε′ − 5.5×10⁻⁴ε′² + 4.3×10⁻⁶ε′³</code></div>
+          <div class="ph-formula"><strong>Condutividade bulk</strong><br><code>σ<sub>b</sub> = σ<sub>s</sub>(1−θ) + σ<sub>ω</sub>θ</code></div>
+          <div class="ph-formula"><strong>Loss tangent</strong><br><code>tanδ = Im(ε*) / Re(ε*) = ε″ / ε′</code></div>
+          <div class="ph-formula"><strong>pH empírico multivariado</strong><br><code>pH = a₀ + a₁ε′ + a₂ε″ + a₃σ<sub>b</sub> + a₄σ<sub>b</sub>ε′ + a₅σ<sub>s</sub> + a₆T</code><div class="ph-note">Coeficientes editáveis no bloco amarelo da seção de dados (já com valores de exemplo).</div></div>
+          <div class="ph-formula"><strong>RFR</strong><br><code>RF(X) = (1/K) Σ pH<sub>k</sub>(X)</code></div>
+          <div class="ph-formula"><strong>SVR — kernel Gaussiano</strong><br><code>SVR(X) = Σ(αᵢ−αᵢ*)K(Xᵢ,X)+b</code><br><code>K(Xᵢ,X)=exp(−γ||Xᵢ−X||²)</code></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ph-chart-grid">
+      <div class="panel">
+        <div class="ph-chart-title-row"><div><span class="sec-label">RFR — Validação 5-fold (principal)</span><span class="ph-model-badge">RFR</span></div><div class="ph-actions"><input class="export-input-group" style="padding:7px 9px; width:190px;" id="ph-rfr-chart-title" value="Five_Fold_RFR_pH"><button class="action-btn" onclick="saveGraph('ph-rfr-canvas','ph-rfr-chart-title')">Baixar PNG</button><button class="action-btn" onclick="resetPHZoom('phRFRChart')">Reset Zoom</button></div></div>
+        <div class="ph-kpi-grid"><div class="ph-kpi"><div class="k-label">R²</div><div class="k-value" id="ph-rfr-r2">—</div></div><div class="ph-kpi"><div class="k-label">RMSE</div><div class="k-value" id="ph-rfr-rmse">—</div></div><div class="ph-kpi"><div class="k-label">MAE</div><div class="k-value" id="ph-rfr-mae">—</div></div></div>
+        <div class="chart-box"><canvas id="ph-rfr-canvas"></canvas></div>
+      </div>
+
+      <div class="panel">
+        <div class="ph-chart-title-row"><div><span class="sec-label">RFR — Gráfico de paridade</span><span class="ph-model-badge">RFR</span></div><div class="ph-actions"><input class="export-input-group" style="padding:7px 9px; width:190px;" id="ph-rfr-parity-title" value="RFR_Parity"><button class="action-btn" onclick="saveGraph('ph-rfr-parity-canvas','ph-rfr-parity-title')">Baixar PNG</button><button class="action-btn" onclick="resetPHZoom('phRFRParityChart')">Reset Zoom</button></div></div>
+        <div class="chart-box"><canvas id="ph-rfr-parity-canvas"></canvas></div>
+      </div>
+
+      <div class="panel">
+        <div class="ph-chart-title-row"><div><span class="sec-label">SVR — Gráfico de paridade</span><span class="ph-model-badge">SVR · kernel Gaussiano</span></div><div class="ph-actions"><input class="export-input-group" style="padding:7px 9px; width:190px;" id="ph-svr-chart-title" value="SVR_Parity"><button class="action-btn" onclick="saveGraph('ph-svr-canvas','ph-svr-chart-title')">Baixar PNG</button><button class="action-btn" onclick="resetPHZoom('phSVRChart')">Reset Zoom</button></div></div>
+        <div class="ph-kpi-grid"><div class="ph-kpi"><div class="k-label">R²</div><div class="k-value" id="ph-svr-r2">—</div></div><div class="ph-kpi"><div class="k-label">RMSE</div><div class="k-value" id="ph-svr-rmse">—</div></div><div class="ph-kpi"><div class="k-label">MAE</div><div class="k-value" id="ph-svr-mae">—</div></div></div>
+        <div class="chart-box"><canvas id="ph-svr-canvas"></canvas></div>
+      </div>
+
+      <div class="panel">
+        <div class="ph-chart-title-row"><span class="sec-label">RFR × SVR — comparação das métricas</span><span class="ph-model-badge">RFR × SVR</span></div>
+        <div class="chart-box"><canvas id="ph-compare-canvas"></canvas></div>
+      </div>
+    </div>
+  </div>
+
   <div id="tab-updates" style="display:none">
     <div class="panel">
       <div class="sec-label" data-i18n="updatesTitle">Histórico de versões / Patch notes</div>
-      <p style="color:var(--text-secondary); margin-bottom:18px;" data-i18n="updatesIntro">Versão atual: <strong>v2.1.0</strong></p>
+      <p style="color:var(--text-secondary); margin-bottom:18px;" data-i18n="updatesIntro">Versão atual: <strong>v2.6.0</strong></p>
       <ul class="updates-list">
+        <li class="update-card">
+          <h3><span class="ver">v2.6.0</span> Cálculo de ε′/ε″ por método na etapa de amostra</h3><p>Na etapa 2, escolha Topp, Mistura Refrativa ou Linear, informe a % de água e calcule ε′, ε″ e tanδ diretamente na planilha antes de executar RFR/SVR.</p>
+          <div class="date">2026-10-06</div>
+          <ul><li>ε′, ε″ e tanδ agora são calculados automaticamente no módulo de pH usando o mesmo Topp + Debye + condutividade da aba principal.</li><li>Botão para reutilizar diretamente os S1P/S2P já carregados no Viewer.</li><li>Topp passou a ser o modelo padrão do site.</li><li>O fluxo principal passou a ser “Calcular Topp + gerar modelos”.</li></ul>
+        </li>
+        <li class="update-card">
+          <h3><span class="ver">v2.4.0</span> Estudo de pH / Machine Learning — Touchstone e edição rápida</h3>
+          <div class="date">2026-10-06</div>
+          <ul><li>Fluxo guiado em 4 passos: preparar dados, importar, conferir e gerar gráficos.</li><li>Configurações avançadas, fórmulas e personalização ficaram recolhidas por padrão.</li><li>Nova aba independente para estudo de pH com as equações apresentadas no artigo.</li><li>RFR, SVR com kernel Gaussiano e validação five-fold com R², RMSE e MAE.</li><li>Gráficos RFR, SVR, parity e comparação com as mesmas opções de personalização de gráficos.</li><li>Importação CSV/XLSX, edição das amostras e exportação dos resultados.</li><li>Faixas de profundidade sugeridas por peso: 50 g → 1,9–2,5 cm; 100 g → 1,9–4,5 cm.</li></ul>
+        </li>
+        <li class="update-card">
+          <h3><span class="ver">v2.2.0</span> Estudo de pH / Machine Learning</h3>
+          <div class="date">2026-10-06</div>
+          <ul><li>Nova aba independente para estudo de pH com RFR, SVR, validação five-fold, importação CSV/XLSX e gráficos personalizáveis.</li></ul>
+        </li>
         <li class="update-card">
           <h3><span class="ver">v2.1.0</span> <span data-i18n="u210title">UI, i18n, eixos editáveis e Updates</span></h3>
           <div class="date">2026-09-28</div>
@@ -889,7 +1216,13 @@
     let moistureChart = null;
     let currentLang = 'pt';
     const SPEED_LIGHT = 299792458;
-    const APP_VERSION = '2.1.0';
+    const APP_VERSION = '2.5.0';
+    const PH_FEATURES = ['s11','s21','frequency','depth','weight','moisture','epsReal','epsImag','sigma','tanDelta'];
+    let phRows = [];
+    let phRFRChart = null, phRFRParityChart = null, phSVRChart = null, phCompareChart = null;
+    let phResults = null;
+    let phPermittivityReady = false;
+    let phEmpiricalPHReady = false;
 
     const POINT_STYLES = ['circle', 'triangle', 'rect', 'rectRot', 'cross', 'crossRot', 'star'];
 
@@ -903,6 +1236,11 @@
         tabAverage: 'Média de Amostras',
         tabMoisture: 'Moisture % × ε\'',
         tab3d: 'Ajuste de Superfície 3D',
+        tabPH: 'Estudo de pH / ML',
+        phTitle: 'Estudo de pH por Microwave Sensor + Machine Learning',
+        phIntro: 'Módulo baseado no artigo enviado: parâmetros eletromagnéticos/físicos → RFR e SVR → validação five-fold. Os dados experimentais devem ser fornecidos pelo usuário; nenhum valor experimental é inventado pelo software.',
+        phFormulaTitle: 'Fórmulas e parâmetros do artigo',
+        phChartOpts: 'Personalização dos gráficos de pH',
         tabUpdates: 'Updates',
         optXTitle: 'Título eixo X',
         optYTitle: 'Título eixo Y',
@@ -923,7 +1261,7 @@
         moistureY: "Permissividade relativa ε'",
         modelCurve: 'Modelo selecionado',
         updatesTitle: 'Histórico de versões / Patch notes',
-        updatesIntro: 'Versão atual: v2.1.0',
+        updatesIntro: 'Versão atual: v2.3.0',
         u210title: 'UI, i18n, eixos editáveis e Updates',
         u210a: 'Opções completas de gráfico: títulos dos eixos, fonte, tamanho, posição da legenda, espessura da linha',
         u210b: 'Interface reorganizada (seções recolhíveis, header limpo)',
@@ -951,6 +1289,11 @@
         tabAverage: 'Sample Average',
         tabMoisture: 'Moisture % × ε\'',
         tab3d: '3D Surface Fit',
+        tabPH: 'pH Study / ML',
+        phTitle: 'Soil pH Study — Microwave Sensor + Machine Learning',
+        phIntro: 'Module based on the supplied paper: electromagnetic/physical parameters → RFR and SVR → five-fold validation. Experimental data must be supplied by the user; the software does not invent experimental values.',
+        phFormulaTitle: 'Paper formulas and parameters',
+        phChartOpts: 'pH chart customization',
         tabUpdates: 'Updates',
         optXTitle: 'X-axis title',
         optYTitle: 'Y-axis title',
@@ -1059,16 +1402,19 @@
       document.getElementById('tab-average').style.display = t === 'average' ? 'block' : 'none';
       document.getElementById('tab-moisture').style.display = t === 'moisture' ? 'block' : 'none';
       document.getElementById('tab-3d').style.display = t === '3d' ? 'block' : 'none';
+      document.getElementById('tab-ph').style.display = t === 'ph' ? 'block' : 'none';
       document.getElementById('tab-updates').style.display = t === 'updates' ? 'block' : 'none';
       
       document.getElementById('btn-tab-viewer').classList.toggle('active', t === 'viewer');
       document.getElementById('btn-tab-average').classList.toggle('active', t === 'average');
       document.getElementById('btn-tab-moisture').classList.toggle('active', t === 'moisture');
       document.getElementById('btn-tab-3d').classList.toggle('active', t === '3d');
+      document.getElementById('btn-tab-ph').classList.toggle('active', t === 'ph');
       document.getElementById('btn-tab-updates').classList.toggle('active', t === 'updates');
       
       if (t === 'average') renderAvgSelectors();
       if (t === 'moisture') updateMoistureChart();
+      if (t === 'ph') { renderPHTable(); renderPHFeatureList(); }
     }
 
     function syncAndRecalculate() {
@@ -1772,6 +2118,580 @@
       document.getElementById('table-avg').innerHTML = html + `</tbody>`;
     }
 
+
+    // ==========================================
+    // MÓDULO pH / RFR + SVR / FIVE-FOLD
+    // Baseado nas equações e metodologia do artigo fornecido.
+    // ==========================================
+    const PH_DEFAULT_HEADERS = ['id','s11','s21','frequency','depth','weight','moisture','epsReal','epsImag','sigma','tanDelta','pH','pHEmpirical'];
+    const PH_MAIN_HEADERS = ['id','s11','s21','frequency','depth','weight','pH','pHEmpirical'];
+    const PH_ADVANCED_HEADERS = ['weight','moisture','epsReal','epsImag','sigma','tanDelta'];
+    let phTableAdvanced = false;
+    const PH_FEATURE_LABELS = {s11:'S11 (dB)',s21:'S21 (dB)',frequency:'Frequência (GHz)',depth:'Profundidade d (cm)',weight:'Peso (g)',moisture:'Umidade (%)',epsReal:"ε'",epsImag:"ε''",sigma:'σb (S/m)',tanDelta:'tanδ',pHEmpirical:'pH calculado (artigo)'};
+
+    function phNum(v){ const n=parseFloat(String(v??'').replace(',','.')); return Number.isFinite(n)?n:null; }
+    function phSeeded(seed){ let x=(Number(seed)||42)>>>0; return ()=>{ x=(1664525*x+1013904223)>>>0; return x/4294967296; }; }
+    function phMean(a){ return a.length?a.reduce((x,y)=>x+y,0)/a.length:NaN; }
+    function phMetrics(y,p){
+      const n=y.length, m=phMean(y), errs=y.map((v,i)=>p[i]-v);
+      const mse=phMean(errs.map(e=>e*e)), rmse=Math.sqrt(mse), mae=phMean(errs.map(Math.abs));
+      const sst=y.reduce((s,v)=>s+(v-m)*(v-m),0), sse=errs.reduce((s,e)=>s+e*e,0);
+      return {r2:sst?1-sse/sst:NaN,rmse,mae};
+    }
+    function phStdParams(rows, features){
+      const mu=features.map(f=>phMean(rows.map(r=>r[f])));
+      const sd=features.map((f,j)=>{ const z=rows.map(r=>r[f]-mu[j]); const q=Math.sqrt(phMean(z.map(v=>v*v))); return q||1; });
+      return {mu,sd};
+    }
+    function phTransform(row, features, st){ return features.map((f,j)=>(row[f]-st.mu[j])/st.sd[j]); }
+    function phSqDist(a,b){ let s=0; for(let i=0;i<a.length;i++){const d=a[i]-b[i];s+=d*d;} return s; }
+
+    class PHDecisionTree {
+      constructor(maxDepth=7,minLeaf=2,featureTry=null,rng=Math.random){this.maxDepth=maxDepth;this.minLeaf=minLeaf;this.featureTry=featureTry;this.rng=rng;this.root=null;}
+      fit(X,y){ this.nFeatures=X[0].length; this.root=this.build(X,y,0); return this; }
+      variance(y){ const m=phMean(y); return y.reduce((s,v)=>s+(v-m)*(v-m),0); }
+      build(X,y,depth){
+        const node={value:phMean(y),leaf:true};
+        if(depth>=this.maxDepth || y.length<=this.minLeaf*2 || this.variance(y)<1e-12) return node;
+        let inds=Array.from({length:this.nFeatures},(_,i)=>i); const k=this.featureTry||Math.max(1,Math.floor(Math.sqrt(this.nFeatures)));
+        for(let i=inds.length-1;i>0;i--){const j=Math.floor(this.rng()*(i+1));[inds[i],inds[j]]=[inds[j],inds[i]];} inds=inds.slice(0,k);
+        const parentVar=this.variance(y); let best=null;
+        for(const f of inds){
+          const vals=X.map(r=>r[f]).slice().sort((a,b)=>a-b); const cuts=[];
+          for(let q=1;q<12;q++){ const idx=Math.floor(q*vals.length/12); if(idx>0&&idx<vals.length){const c=(vals[idx-1]+vals[idx])/2;if(!cuts.some(x=>Math.abs(x-c)<1e-12))cuts.push(c);} }
+          for(const t of cuts){
+            const lx=[],ly=[],rx=[],ry=[]; for(let i=0;i<X.length;i++){if(X[i][f]<=t){lx.push(X[i]);ly.push(y[i]);}else{rx.push(X[i]);ry.push(y[i]);}}
+            if(ly.length<this.minLeaf||ry.length<this.minLeaf) continue;
+            const gain=parentVar-this.variance(ly)-this.variance(ry);
+            if(!best||gain>best.gain)best={f,t,lx,ly,rx,ry,gain};
+          }
+        }
+        if(!best||best.gain<=1e-10) return node;
+        node.leaf=false; node.f=best.f; node.t=best.t; node.left=this.build(best.lx,best.ly,depth+1); node.right=this.build(best.rx,best.ry,depth+1); return node;
+      }
+      predictOne(x,n=this.root){return n.leaf?n.value:(x[n.f]<=n.t?this.predictOne(x,n.left):this.predictOne(x,n.right));}
+      predict(X){return X.map(x=>this.predictOne(x));}
+    }
+
+    function phBootstrap(n,rng){const idx=[];for(let i=0;i<n;i++)idx.push(Math.floor(rng()*n));return idx;}
+    function phRFRFit(X,y,opt){
+      const rng=phSeeded(opt.seed), trees=[];
+      for(let k=0;k<opt.trees;k++){
+        const ids=phBootstrap(X.length,rng), bx=ids.map(i=>X[i]), by=ids.map(i=>y[i]);
+        trees.push(new PHDecisionTree(opt.depth,opt.leaf,null,rng).fit(bx,by));
+      }
+      return {trees,predict:X2=>{const sums=new Array(X2.length).fill(0);trees.forEach(t=>t.predict(X2).forEach((v,i)=>sums[i]+=v));return sums.map(v=>v/trees.length);}};
+    }
+
+    // Epsilon-SVR dual solved by a projected-gradient style optimizer.
+    // The Gaussian kernel is exactly K(Xi,X)=exp(-gamma*||Xi-X||^2) from the paper.
+    function phSVRFit(X,y,opt){
+      const n=X.length, K=Array.from({length:n},()=>Array(n).fill(0));
+      for(let i=0;i<n;i++)for(let j=0;j<n;j++)K[i][j]=Math.exp(-opt.gamma*phSqDist(X[i],X[j]));
+      const a=new Array(n).fill(0), astar=new Array(n).fill(0); let b=0;
+      // Stable projected updates for the two dual variables. This is intentionally bounded by C.
+      const lr=0.01/(1+opt.gamma), iters=900;
+      for(let it=0;it<iters;it++){
+        const f=new Array(n).fill(b); for(let i=0;i<n;i++){let z=0;for(let j=0;j<n;j++)z+=(a[j]-astar[j])*K[j][i];f[i]+=z;}
+        for(let i=0;i<n;i++){
+          const e=f[i]-y[i];
+          let ga=0, gs=0;
+          if(e>opt.eps) ga=e; else if(e<-opt.eps) gs=-e;
+          a[i]=Math.min(opt.C,Math.max(0,a[i]-lr*ga));
+          astar[i]=Math.min(opt.C,Math.max(0,astar[i]-lr*gs));
+        }
+        let sum=0;for(let i=0;i<n;i++)sum+=a[i]-astar[i]; b-=lr*sum/n;
+      }
+      // bias correction over near-support vectors
+      const sv=[]; for(let i=0;i<n;i++) if(Math.abs(a[i]-astar[i])>1e-5)sv.push(i);
+      if(sv.length){let bs=0,c=0;for(const i of sv){let z=y[i];for(let j=0;j<n;j++)z-=(a[j]-astar[j])*K[j][i];bs+=z;c++;}return {X,y,a,astar,b:bs/c,svCount:sv.length,predict:Z=>Z.map(x=>{let z=bs/c;for(let j=0;j<n;j++){const coef=a[j]-astar[j];if(Math.abs(coef)>1e-7)z+=coef*Math.exp(-opt.gamma*phSqDist(X[j],x));}return z;})};}
+      return {X,y,a,astar,b,predict:Z=>Z.map(x=>{let z=b;for(let j=0;j<n;j++)z+=(a[j]-astar[j])*Math.exp(-opt.gamma*phSqDist(X[j],x));return z;})};
+    }
+
+    function phGetFeatures(){return Array.from(document.querySelectorAll('#ph-feature-list input:checked')).map(x=>x.value);}
+    function renderPHFeatureList(){
+      const el=document.getElementById('ph-feature-list'); if(!el)return;
+      const prev=phGetFeatures(); const recommended=['s11','s21','frequency','depth','moisture','epsReal','epsImag','tanDelta']; el.innerHTML=PH_FEATURES.map(f=>`<label class="ph-feature-item"><input type="checkbox" value="${f}" ${prev.length?prev.includes(f):recommended.includes(f)?'checked':''}> ${PH_FEATURE_LABELS[f]}</label>`).join('');
+    }
+    function phNormalizeRows(){
+      // Normaliza os valores sem apagar linhas. O pH medido é exigido somente
+      // no momento de executar RFR/SVR; a planilha deve continuar visível para
+      // que o usuário possa preencher profundidade e pH após calcular ε′/ε″.
+      return phRows.map((r,i)=>({id:r.id||i+1,...Object.fromEntries(PH_DEFAULT_HEADERS.slice(1).map(k=>[k,phNum(r[k])]))}));
+    }
+    function phTableHeaders(){ return phTableAdvanced ? PH_DEFAULT_HEADERS : PH_MAIN_HEADERS; }
+    function togglePHAdvancedTable(){ phTableAdvanced=!phTableAdvanced; renderPHTable(); renderPHTableWithPredictions(); }
+    function renderPHTable(){
+      const el=document.getElementById('ph-data-table'); if(!el)return;
+      const headers=phTableHeaders(); const labels={id:'Amostra',s11:'S11 (dB)',s21:'S21 (dB)',frequency:'Frequência (GHz)',depth:'Profundidade (cm)',weight:'Peso (g)',moisture:'Umidade (%)',epsReal:"ε'",epsImag:"ε''",sigma:'σb (S/m)',tanDelta:'tanδ',pH:'pH medido',pHEmpirical:'pH calculado (artigo)'};
+      let h='<thead><tr>'+headers.map(x=>`<th>${labels[x]||x}</th>`).join('')+'<th>Ações</th></tr></thead><tbody>';
+      phRows.forEach((r,i)=>{h+='<tr>'+headers.map(k=>`<td><input class="ph-table-input" value="${r[k]??''}" onchange="updatePHCell(${i},'${k}',this.value)"></td>`).join('')+`<td><button class="action-btn" onclick="removePHRow(${i})">×</button></td></tr>`;});
+      if(!phRows.length)h+=`<tr><td colspan="${headers.length+1}" style="color:var(--text-secondary);">Nenhuma amostra. Importe um CSV/Excel ou adicione uma linha.</td></tr>`;
+      el.innerHTML=h+'</tbody>';
+    }
+    function updatePHCell(i,k,v){phRows[i][k]=v;}
+    function addPHRow(){const id=phRows.length+1;phRows.push({id,s11:'',s21:'',frequency:'',depth:'',weight:'',moisture:'',epsReal:'',epsImag:'',sigma:'',tanDelta:'',pH:'',pHEmpirical:''});renderPHTable();}
+    function removePHRow(i){phRows.splice(i,1);renderPHTable();}
+    function clearPHData(){phRows=[];phResults=null;phPermittivityReady=false;phEmpiricalPHReady=false;renderPHTable();clearPHCharts();const b=document.getElementById('ph-run-models-btn');if(b)b.disabled=true;const e=document.getElementById('ph-perm-status');if(e){e.className='ph-status';e.textContent='Informe a % de água e clique no botão para preencher ε′/ε″.';}setPHStatus('Dados limpos. Aguardando dados experimentais.','');}
+    function setPHStatus(msg,type=''){const e=document.getElementById('ph-status');e.textContent=msg;e.className='ph-status '+type;}
+
+    function phDownloadText(filename,text,type='text/csv;charset=utf-8'){
+      const blob=new Blob([text],{type});
+      const url=URL.createObjectURL(blob); const a=document.createElement('a');
+      a.href=url; a.download=filename; a.style.display='none'; document.body.appendChild(a); a.click();
+      setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
+    }
+    function downloadPHTemplate(){
+      const csv='id,s11,s21,frequency,depth,pH\n';
+      phDownloadText('template_estudo_pH.csv',csv);
+      setPHStatus('Template CSV baixado. Preencha uma linha por observação e informe o pH medido.','ok');
+    }
+    function downloadPHSample(){
+      const rows=[['id','s11','s21','frequency','depth','pH']];
+      for(let i=1;i<=25;i++){
+        const f=2.35+(i%5)*0.025;
+        const d=2.00+((i-1)%10)*0.045;
+        const pH=5.10+0.055*i+0.10*Math.sin(i*0.8);
+        const s11=-18.2+1.15*Math.sin(i*0.63)-0.35*(pH-5.8);
+        const s21=-4.8+0.75*Math.cos(i*0.47)-0.18*(pH-5.8);
+        rows.push([i,s11.toFixed(4),s21.toFixed(4),f.toFixed(4),d.toFixed(3),pH.toFixed(3)]);
+      }
+      phDownloadText('sample_estudo_pH.csv',rows.map(r=>r.join(',')).join('\n')+'\n');
+      setPHStatus('Arquivo de exemplo baixado: 25 observações sintéticas. Ele serve apenas para testar o fluxo e os gráficos; não representa medições reais.','ok');
+    }
+    function addPHRows(n=1){
+      const base=phRows.length;
+      for(let j=0;j<n;j++) phRows.push({id:base+j+1,s11:'',s21:'',frequency:'',depth:'',weight:'',moisture:'',epsReal:'',epsImag:'',sigma:'',tanDelta:'',pH:'',pHEmpirical:''});
+      renderPHTable();
+    }
+    function normalizePHIds(){phRows.forEach((r,i)=>r.id=i+1);renderPHTable();if(phResults)renderPHTableWithPredictions();}
+    function fillPHColumn(key,inputId){
+      const el=document.getElementById(inputId), value=el?.value?.trim();
+      if(!value){setPHStatus('Informe um valor antes de aplicar à coluna.','warn');return;}
+      phRows.forEach(r=>r[key]=value); phResults=null; clearPHCharts(); renderPHTable();
+      const labels={pH:'pH medido',depth:'Profundidade',weight:'Massa (g)'};
+      setPHStatus(`${labels[key]||key} aplicado a ${phRows.length} amostra(s).`,'ok');
+    }
+    function resetPHCoefficients(){
+      const defaults={ 'ph-a0':4.80,'ph-a1':0.055,'ph-a2':0.120,'ph-a3':-0.40,'ph-a4':-0.020,'ph-a5':0.15,'ph-a6':0.020 };
+      Object.entries(defaults).forEach(([id,v])=>{ const e=document.getElementById(id); if(e)e.value=v; });
+      setPHStatus('Coeficientes a₀…a₆ restaurados (exemplo, faixa pH 5–6,5). Recalcule ε′/ε″ na etapa 2 para atualizar o pH empírico.','ok');
+    }
+    function phParseTouchstone(text,filename){
+      const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/); let freqUnit='ghz', fmt='ma', data=[];
+      for(const raw of lines){
+        const line=raw.trim(); if(!line||line.startsWith('!'))continue;
+        if(line.startsWith('#')){ const p=line.substring(1).trim().split(/\s+/).map(x=>x.toLowerCase()); if(p[0])freqUnit=p[0]; const f=p.find(x=>['db','ma','ri'].includes(x)); if(f)fmt=f; continue; }
+        if(line.startsWith('['))continue;
+        const clean=line.split('!')[0].trim(); if(!clean)continue;
+        const a=clean.split(/[\s,;]+/).map(Number); if(a.some(v=>!Number.isFinite(v)))continue;
+        const need=filename.toLowerCase().endsWith('.s1p')?3:9; if(a.length<need)continue;
+        const unitScale={hz:1,khz:1e-3,mhz:1e-6,ghz:1e-9}[freqUnit]??1e-9; const fGHz=a[0]*unitScale;
+        const toDb=(v1,v2)=>{let mag;if(fmt==='db')mag=Math.pow(10,v1/20);else if(fmt==='ma')mag=Math.abs(v1);else mag=Math.hypot(v1,v2);return 20*Math.log10(Math.max(mag,1e-12));};
+        const s11=toDb(a[1],a[2]); let s21=''; if(need===9)s21=toDb(a[3],a[4]);
+        data.push({id:data.length+1,s11:s11.toFixed(6),s21:s21===''?'':s21.toFixed(6),frequency:fGHz.toFixed(9),depth:'',weight:'',moisture:'',epsReal:'',epsImag:'',sigma:'',tanDelta:'',pH:'',pHEmpirical:''});
+      }
+      return data;
+    }
+    function phAggregateTouchstoneRows(rows, filename){
+      // Artigo: 1 observação = 1 amostra de solo (não cada ponto de frequência).
+      // Extrai ressonância (mínimo S11) ou ponto mais próximo de 4,42 GHz.
+      if(!rows || !rows.length) return null;
+      const targetF = 4.42;
+      let best = null, bestScore = Infinity;
+      for(const r of rows){
+        const f = phNum(r.frequency), s11 = phNum(r.s11);
+        if(f==null || s11==null) continue;
+        const score = s11 + 0.01*Math.abs(f - targetF);
+        if(score < bestScore){ bestScore = score; best = r; }
+      }
+      if(!best){
+        bestScore = Infinity;
+        for(const r of rows){
+          const f = phNum(r.frequency);
+          if(f==null) continue;
+          const d = Math.abs(f - targetF);
+          if(d < bestScore){ bestScore = d; best = r; }
+        }
+      }
+      if(!best) best = rows[Math.floor(rows.length/2)];
+      return {
+        id:1, s11:best.s11, s21:best.s21, frequency:best.frequency,
+        depth:'', weight:'', moisture:'', epsReal:'', epsImag:'', sigma:'', tanDelta:'',
+        pH:'', pHEmpirical:'', _sourceFile:filename||'', _nFreqPoints:rows.length
+      };
+    }
+
+    function handlePHTouchstone(files){
+      if(!files.length)return;
+      const importAll = !!document.getElementById('ph-import-all-freq')?.checked;
+      let pending=files.length, imported=[], errors=[], totalPts=0;
+      for(const file of files){
+        const reader=new FileReader();
+        reader.onload=e=>{
+          try{
+            const rows=phParseTouchstone(e.target.result,file.name);
+            if(!rows.length) errors.push(file.name+': nenhum ponto válido');
+            else {
+              totalPts += rows.length;
+              if(importAll){
+                rows.forEach(r=>{ imported.push(r); });
+              } else {
+                const one=phAggregateTouchstoneRows(rows, file.name);
+                if(one) imported.push(one);
+              }
+            }
+          }catch(err){ errors.push(file.name+': '+err.message); }
+          finally{
+            pending--;
+            if(!pending){
+              if(imported.length){
+                // ACUMULA: não apaga amostras já existentes
+                const baseId = phRows.length;
+                imported.forEach((r,i)=>{ r.id = baseId + i + 1; });
+                phRows = phRows.concat(imported);
+                phResults=null; phPermittivityReady=false; phEmpiricalPHReady=false; clearPHCharts();
+                const pb=document.getElementById('ph-run-models-btn'); if(pb)pb.disabled=true;
+                const hasS21=phRows.some(r=>phNum(r.s21)!=null);
+                renderPHFeatureList();
+                document.querySelectorAll('#ph-feature-list input').forEach(cb=>{cb.checked=['s11','frequency','depth','moisture','epsReal','epsImag','tanDelta'].includes(cb.value)||(hasS21&&cb.value==='s21');});
+                renderPHTable();
+                const modeMsg = importAll
+                  ? `+${imported.length} pontos de frequência (${files.length} arquivo(s)). Total na tabela: ${phRows.length}.`
+                  : `+${imported.length} amostra(s) (1 por arquivo, ressonância / ~4,42 GHz; ${totalPts} pts de freq.). Total na tabela: ${phRows.length}.`;
+                setPHStatus(modeMsg+' '+(hasS21?'S2P OK.':'S1P: só S11.')+' Pode importar mais arquivos — eles serão adicionados. Use “Limpar dados” se quiser recomeçar.','ok');
+              }else setPHStatus('Não foi possível ler os Touchstone: '+errors.join(' | '),'err');
+            }
+          }
+        };
+        reader.readAsText(file);
+      }
+    }
+    function handlePHPaste(e){
+      const target=e.target; if(!target.classList.contains('ph-table-input'))return;
+      const text=e.clipboardData?.getData('text/plain')||''; if(!text.includes('\t')&&!text.includes('\n'))return;
+      e.preventDefault();
+      const rowEl=target.closest('tr'), cell=target.closest('td'); const r0=[...rowEl.parentElement.children].indexOf(rowEl); const c0=[...rowEl.children].indexOf(cell);
+      const lines=text.replace(/\r/g,'').split('\n').filter(x=>x.length); const headers=phTableHeaders();
+      lines.forEach((line,ri)=>{const vals=line.split('\t'); if(!phRows[r0+ri])phRows[r0+ri]={id:r0+ri+1,s11:'',s21:'',frequency:'',depth:'',weight:'',moisture:'',epsReal:'',epsImag:'',sigma:'',tanDelta:'',pH:'',pHEmpirical:''}; vals.forEach((v,ci)=>{const k=headers[c0+ci];if(k)phRows[r0+ri][k]=v.trim();});});
+      renderPHTable();
+      const next=document.querySelectorAll('.ph-table-input')[Math.min((r0+lines.length-1)*headers.length+c0,document.querySelectorAll('.ph-table-input').length-1)]; if(next)next.focus();
+    }
+    document.addEventListener('paste',handlePHPaste);
+
+    function handlePHFile(files){
+      if(!files.length)return; const f=files[0]; const reader=new FileReader();
+      reader.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:f.name.toLowerCase().endsWith('.csv')?'string':'array'});const sh=wb.Sheets[wb.SheetNames[0]];const raw=XLSX.utils.sheet_to_json(sh,{defval:''});
+        const mapped=raw.map((r,i)=>{const get=(...keys)=>{for(const k of keys){const hit=Object.keys(r).find(x=>x.trim().toLowerCase()===k.toLowerCase());if(hit!=null)return r[hit];}return '';};return {id:0,s11:get('s11','S11 (dB)'),s21:get('s21','S21 (dB)'),frequency:get('frequency','freq','frequency (ghz)'),depth:get('depth','d'),weight:get('weight','peso'),moisture:get('moisture','water','water content','umidade'),epsReal:get('epsReal','epsilon real','ε\'','eps\''),epsImag:get('epsImag','epsilon imag','ε\'\''),sigma:get('sigma','σb'),tanDelta:get('tanDelta','tanδ','loss tangent'),pH:get('pH','ph','soil ph'),pHEmpirical:get('pHEmpirical','pH calculado','ph empirical')};});
+        if(!mapped.length){ setPHStatus('Arquivo sem linhas válidas.','warn'); return; }
+        // ACUMULA em vez de substituir
+        const baseId = phRows.length;
+        mapped.forEach((r,i)=>{ r.id = baseId + i + 1; });
+        phRows = phRows.concat(mapped);
+        phResults=null;phPermittivityReady=false;phEmpiricalPHReady=false;clearPHCharts();
+        const pb=document.getElementById('ph-run-models-btn');if(pb)pb.disabled=true;
+        renderPHTable();
+        setPHStatus(`+${mapped.length} amostra(s) importada(s) de ${f.name}. Total na tabela: ${phRows.length}. Pode importar mais arquivos para continuar adicionando.`,'ok');
+      }catch(err){setPHStatus('Erro ao importar o arquivo: '+err.message,'err');}};
+      if(f.name.toLowerCase().endsWith('.csv'))reader.readAsText(f);else reader.readAsArrayBuffer(f);
+    }
+
+    // Calcula ε′/ε″ usando exatamente a mesma lógica dos três modelos da aba principal.
+    // A % de água informada na etapa 2 é aplicada a todas as linhas da planilha.
+    function calculatePHPermittivity(){
+      if(!phRows.length){
+        setPHStatus('Adicione ou importe pelo menos uma amostra antes de calcular ε′/ε″.','warn');
+        const e=document.getElementById('ph-perm-status'); if(e)e.className='ph-status warn'; if(e)e.textContent='Adicione ou importe amostras primeiro.';
+        return;
+      }
+      const water=phNum(document.getElementById('ph-water-percent')?.value);
+      const method=document.getElementById('ph-perm-method')?.value||'topp';
+      if(water==null||water<0||water>100){
+        const e=document.getElementById('ph-perm-status'); if(e){e.className='ph-status warn';e.textContent='Informe uma % de água entre 0 e 100.';}
+        return;
+      }
+      const EPS0=8.854187817e-12;
+      const rhob=phNum(document.getElementById('soil-rhob')?.value);
+      const rhos=phNum(document.getElementById('soil-rhos')?.value);
+      const epsS=phNum(document.getElementById('soil-eps')?.value);
+      const sigma=phNum(document.getElementById('soil-sigma')?.value);
+      const tempC=phNum(document.getElementById('soil-temp')?.value);
+      const a=phNum(document.getElementById('topp-a')?.value), b=phNum(document.getElementById('topp-b')?.value), c=phNum(document.getElementById('topp-c')?.value), d=phNum(document.getElementById('topp-d')?.value);
+      const aa=Number.isFinite(a)?a:3.03, bb=Number.isFinite(b)?b:9.3, cc=Number.isFinite(c)?c:146.0, dd=Number.isFinite(d)?d:-76.7;
+      const tc=Number.isFinite(tempC)?tempC:20;
+      const t=water/100;
+      const coeffIds=['ph-a0','ph-a1','ph-a2','ph-a3','ph-a4','ph-a5','ph-a6'];
+      const coeff=coeffIds.map(id=>phNum(document.getElementById(id)?.value));
+      const hasPHCoefficients=coeff.every(Number.isFinite);
+      let calculated=0, skipped=0, calculatedPH=0;
+      phRows.forEach(r=>{
+        r.moisture=water.toFixed(4);
+        const fGHz=phNum(r.frequency), fHz=fGHz==null?null:fGHz*1e9;
+        if(fHz==null||fHz<=0){skipped++;return;}
+        const epsW=debyeWater(fHz,tc);
+        const condTerm=(Number.isFinite(sigma)?sigma:0.05)/(2*Math.PI*fHz*EPS0);
+        if(method==='linear'){
+          const es=Number.isFinite(epsS)?epsS:4.7;
+          r.epsReal=es+t*epsW.re;
+        }else if(method==='refractive'){
+          const rb=Number.isFinite(rhob)?rhob:1.4, rs=Number.isFinite(rhos)?rhos:2.65, es=Number.isFinite(epsS)?epsS:4.7;
+          const term=1+(rb/rs)*(Math.sqrt(Math.max(es,0))-1)+t*Math.sqrt(Math.max(epsW.re,0));
+          r.epsReal=term*term;
+        }else{
+          r.epsReal=aa+bb*t+cc*t*t+dd*t*t*t;
+        }
+        r.epsImag=t*(condTerm+epsW.im);
+        r.sigma=Number.isFinite(sigma)?sigma:0.05;
+        r.tanDelta=r.epsReal!==0?r.epsImag/r.epsReal:null;
+        if(hasPHCoefficients){
+          const sigmaB=r.sigma, sigmaS=r.sigma;
+          const phEmp=coeff[0]+coeff[1]*r.epsReal+coeff[2]*r.epsImag+coeff[3]*sigmaB+coeff[4]*sigmaB*r.epsReal+coeff[5]*sigmaS+coeff[6]*tc;
+          r.pHEmpirical=Number.isFinite(phEmp)?phEmp.toFixed(4):'';
+          calculatedPH++;
+        }else{
+          r.pHEmpirical='';
+        }
+        calculated++;
+      });
+      // Opção: usar pH empírico como alvo (coluna pH medido) para o RFR/SVR
+      const useEmpAsTarget = !!document.getElementById('ph-use-empirical-as-target')?.checked;
+      let copiedPH = 0;
+      if(useEmpAsTarget && hasPHCoefficients){
+        phRows.forEach(r=>{
+          if(r.pHEmpirical!=='' && r.pHEmpirical!=null){ r.pH = r.pHEmpirical; copiedPH++; }
+        });
+        phEmpiricalPHReady = copiedPH > 0;
+      } else {
+        phEmpiricalPHReady = false;
+      }
+      phPermittivityReady=calculated>0;
+      phResults=null; clearPHCharts(); renderPHTable();
+      const btn=document.getElementById('ph-run-models-btn'); if(btn)btn.disabled=!phPermittivityReady;
+      const methodLabel=method==='topp'?'Topp':method==='linear'?'Linear':'Mistura Refrativa (CRIM)';
+      const e=document.getElementById('ph-perm-status');
+      let msg = '';
+      if(!calculated){
+        msg = 'Nenhuma linha pôde ser calculada: informe a frequência em GHz.';
+      } else {
+        msg = `${calculated} linha(s) calculada(s) com ${methodLabel}, usando ${water.toFixed(2)}% de água. ε′, ε″ e tanδ preenchidos.`;
+        if(hasPHCoefficients) msg += ` pH empírico calculado em ${calculatedPH} linha(s).`;
+        else msg += ' Coeficientes a₀…a₆ incompletos — pH empírico não gerado.';
+        if(copiedPH) msg += ` pH empírico copiado para a coluna pH medido em ${copiedPH} amostra(s) (alvo do ML).`;
+        else if(hasPHCoefficients) msg += ' Marque “Usar pH empírico como pH medido” ou clique no botão verde para usar esses valores no RFR/SVR.';
+        if(skipped) msg += ` ${skipped} linha(s) ignoradas por falta de frequência.`;
+        msg += ' Informe profundidade (e massa, se quiser) e execute a análise.';
+      }
+      if(e){e.className='ph-status '+(calculated?'ok':'warn'); e.textContent=msg;}
+      if(calculated) setPHStatus(copiedPH?`ε′/ε″ e pH empírico prontos. ${copiedPH} pH(s) aplicados como alvo do ML.`:'ε′/ε″ calculados. Use o pH empírico como alvo (checkbox/botão) ou preencha o pH medido manualmente.','ok');
+    }
+
+    function applyEmpiricalPHAsTarget(){
+      let n=0;
+      phRows.forEach(r=>{
+        if(r.pHEmpirical!=='' && r.pHEmpirical!=null){ r.pH = r.pHEmpirical; n++; }
+      });
+      if(!n){ setPHStatus('Não há pH empírico calculado. Informe a % de água, confirme a₀…a₆ e clique em “Calcular ε′, ε″ e preparar pH”.','warn'); return; }
+      phEmpiricalPHReady=true; phResults=null; clearPHCharts(); renderPHTable();
+      const cb=document.getElementById('ph-use-empirical-as-target'); if(cb) cb.checked=true;
+      setPHStatus(`pH empírico copiado para pH medido em ${n} amostra(s). Agora você pode executar RFR/SVR.`,'ok');
+    }
+
+    // Reaproveita exatamente o mesmo modelo Topp + Debye + condutividade usado na aba principal.
+    // No módulo de pH, ε′/ε″/tanδ são derivados automaticamente antes do ML.
+    function phCalculateToppFeatures(rows){
+      const EPS0=8.854187817e-12;
+      const defaultTheta=phNum(document.getElementById('soil-theta')?.value);
+      const sigmaDefault=phNum(document.getElementById('soil-sigma')?.value);
+      const tempC=phNum(document.getElementById('soil-temp')?.value);
+      const a=phNum(document.getElementById('topp-a')?.value);
+      const b=phNum(document.getElementById('topp-b')?.value);
+      const c=phNum(document.getElementById('topp-c')?.value);
+      const d=phNum(document.getElementById('topp-d')?.value);
+      const aa=Number.isFinite(a)?a:3.03, bb=Number.isFinite(b)?b:9.3, cc=Number.isFinite(c)?c:146.0, dd=Number.isFinite(d)?d:-76.7;
+      const tc=Number.isFinite(tempC)?tempC:20;
+      let usedDefaultTheta=0;
+      rows.forEach(r=>{
+        let theta=phNum(r.moisture);
+        if(theta!=null && theta>1) theta/=100;
+        if(theta==null){theta=Number.isFinite(defaultTheta)?defaultTheta:0.20;usedDefaultTheta++;}
+        theta=Math.max(0,Math.min(1,theta));
+        r.moisture=theta*100;
+        const fGHz=phNum(r.frequency);
+        const fHz=fGHz==null?null:fGHz*1e9;
+        if(fHz!=null && fHz>0){
+          const epsW=debyeWater(fHz,tc);
+          const sigma=phNum(r.sigma)!=null?phNum(r.sigma):(Number.isFinite(sigmaDefault)?sigmaDefault:0.05);
+          const condTerm=sigma/(2*Math.PI*fHz*EPS0);
+          r.epsReal=aa+bb*theta+cc*theta*theta+dd*theta*theta*theta;
+          r.epsImag=theta*(condTerm+epsW.im);
+          r.sigma=sigma;
+          r.tanDelta=r.epsReal!==0?r.epsImag/r.epsReal:null;
+        }
+      });
+      return {usedDefaultTheta,thetaDefault:Number.isFinite(defaultTheta)?defaultTheta:0.20};
+    }
+
+    function loadPHFromViewer(){
+      if(!store.length){setPHStatus('Nenhum S1P/S2P está carregado no Viewer. Importe um Touchstone primeiro ou use o botão Importar S1P / S2P.','warn');return;}
+      const importAll = !!document.getElementById('ph-import-all-freq')?.checked;
+      const newRows=[];
+      store.forEach(file=>{
+        const theta=Number.isFinite(file.theta)?file.theta:null;
+        const pts = file.data || [];
+        if(!pts.length) return;
+        const toRow = (pt)=>({
+          id: 0,
+          s11: Number.isFinite(pt.s11db)?pt.s11db:(20*Math.log10(Math.max(cabs(pt.s11),1e-12))),
+          s21: pt.s21?(Number.isFinite(pt.s21db)?pt.s21db:(20*Math.log10(Math.max(cabs(pt.s21),1e-12)))):'',
+          frequency: pt.freq/1e9,
+          depth:'', weight:'',
+          moisture: theta!=null?theta*100:'',
+          epsReal: pt.er??'', epsImag: pt.ei??'', sigma:'',
+          tanDelta: (pt.er&&pt.ei!=null)?pt.ei/pt.er:'',
+          pH:'', pHEmpirical:'',
+          _sourceFile: file.displayName||file.name||'',
+          _nFreqPoints: pts.length
+        });
+        if(importAll){
+          pts.forEach(pt=>newRows.push(toRow(pt)));
+        } else {
+          let best=null, bestScore=Infinity;
+          for(const pt of pts){
+            const f=pt.freq/1e9;
+            const s11=Number.isFinite(pt.s11db)?pt.s11db:(20*Math.log10(Math.max(cabs(pt.s11),1e-12)));
+            const score=s11+0.01*Math.abs(f-4.42);
+            if(score<bestScore){bestScore=score;best=pt;}
+          }
+          if(best) newRows.push(toRow(best));
+        }
+      });
+      if(!newRows.length){ setPHStatus('Nenhum ponto válido no Viewer.','warn'); return; }
+      const baseId = phRows.length;
+      newRows.forEach((r,i)=>{ r.id = baseId + i + 1; });
+      phRows = phRows.concat(newRows);
+      phResults=null;phPermittivityReady=false;phEmpiricalPHReady=false;clearPHCharts();
+      const pb=document.getElementById('ph-run-models-btn');if(pb)pb.disabled=true;
+      renderPHFeatureList();
+      document.querySelectorAll('#ph-feature-list input').forEach(cb=>{cb.checked=['s11','s21','frequency','depth','moisture','epsReal','epsImag','tanDelta'].includes(cb.value);});
+      renderPHTable();
+      const mode = importAll ? `+${newRows.length} pontos de frequência` : `+${newRows.length} amostra(s) (1 por arquivo no Viewer)`;
+      setPHStatus(mode+`. Total na tabela: ${phRows.length}. Pode adicionar mais. Use “Limpar dados” para recomeçar.`,'ok');
+    }
+
+    function phAutoFeatures(rows){
+      rows.forEach(r=>{
+        if(r.frequency==null)r.frequency='';
+        // If epsilon values are present, calculate theta and tan(delta) when absent.
+        const er=phNum(r.epsReal), ei=phNum(r.epsImag), sb=phNum(r.sigma);
+        if(phNum(r.moisture)==null && er!=null){const t=-0.053+0.0292*er-5.5e-4*er*er+4.3e-6*er*er*er;r.moisture=t*100;}
+        if(phNum(r.tanDelta)==null && er!=null && ei!=null)r.tanDelta=ei/er;
+        if(sb!=null && er!=null && r.tanDelta==null)r.tanDelta=0;
+      });
+    }
+    function phFolds(n,k,seed){const idx=Array.from({length:n},(_,i)=>i),rng=phSeeded(seed);for(let i=n-1;i>0;i--){const j=Math.floor(rng()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}const folds=Array.from({length:k},()=>[]);idx.forEach((v,i)=>folds[i%k].push(v));return folds;}
+    function phCrossValidate(rows,features,folds,opt){
+      const F=phFolds(rows.length,folds,opt.seed), out={rfr:new Array(rows.length),svr:new Array(rows.length),fold: new Array(rows.length)};
+      for(let fi=0;fi<F.length;fi++){
+        const testSet=new Set(F[fi]), train=rows.filter((_,i)=>!testSet.has(i)), test=rows.filter((_,i)=>testSet.has(i));
+        const st=phStdParams(train,features); const Xtr=train.map(r=>phTransform(r,features,st)), ytr=train.map(r=>r.pH), Xte=test.map(r=>phTransform(r,features,st));
+        const rf=phRFRFit(Xtr,ytr,{trees:opt.trees,depth:opt.depth,leaf:opt.leaf,seed:opt.seed+fi*997});
+        const sv=phSVRFit(Xtr,ytr,{C:opt.C,eps:opt.eps,gamma:opt.gamma});
+        const pr=rf.predict(Xte), ps=sv.predict(Xte);let q=0;for(let i=0;i<rows.length;i++)if(testSet.has(i)){out.rfr[i]=pr[q];out.svr[i]=ps[q];out.fold[i]=fi+1;q++;}
+      }
+      return out;
+    }
+    function runPHModels(){
+      // Não confie somente na flag visual: valide os dados atuais da planilha.
+      // Isso evita que o botão fique inoperante após edições/importações.
+      const allRows=phNormalizeRows();
+      const calculatedRows=allRows.filter(r=>phNum(r.epsReal)!=null&&phNum(r.epsImag)!=null);
+      if(!phPermittivityReady && !calculatedRows.length){
+        setPHStatus('Calcule primeiro ε′ e ε″ na etapa 2, escolhendo um dos três métodos e informando a % de água.','warn');
+        return;
+      }
+      if(calculatedRows.length) phPermittivityReady=true;
+      // Não substitua phRows pelos dados filtrados: isso era a causa de a
+      // planilha desaparecer quando o usuário ainda não havia preenchido pH.
+      // Primeiro mantemos todas as linhas na interface e só depois selecionamos
+      // as observações completas para o treinamento.
+      phAutoFeatures(allRows);
+      phRows=allRows;
+      renderPHTable();
+
+      const rows=allRows.filter(r=>r.pH!=null);
+      if(!rows.length){setPHStatus('Preencha o pH medido nas amostras antes de gerar RFR/SVR. Os dados continuam preservados na planilha.','warn');return;}
+      // Diagnóstico: gráfico do artigo exige variação real de pH entre amostras
+      const pHvals=rows.map(r=>r.pH), pHmin=Math.min(...pHvals), pHmax=Math.max(...pHvals), pHspan=pHmax-pHmin;
+      const uniqPH=new Set(pHvals.map(v=>Number(v).toFixed(3))).size;
+      if(pHspan<0.05 || uniqPH<3){
+        setPHStatus(`pH quase constante (min=${pHmin.toFixed(3)}, max=${pHmax.toFixed(3)}, valores distintos≈${uniqPH}). O R² fica inválido/negativo e o gráfico colapsa num ponto — como no artigo, use várias amostras com pH entre ~5,0 e 6,5 (não o mesmo pH empírico para todas).`,'warn');
+        return;
+      }
+      if(rows.length>200){
+        setPHStatus(`N=${rows.length} é muito alto (artigo usa N=98). Provavelmente importou todos os pontos de frequência. Desmarque “Importar todos os pontos”, reimporte (1 amostra/arquivo) e rode de novo.`,'warn');
+        return;
+      }
+      if(rows.some(r=>phNum(r.epsReal)==null||phNum(r.epsImag)==null)){setPHStatus('Há amostras válidas para pH sem ε′/ε″ calculados. Volte à etapa 2 e execute o cálculo de permissividade.','warn');return;}
+      // Se nenhuma feature avançada foi explicitamente alterada, use o conjunto multivariado do artigo + propriedades calculadas.
+      const checked=phGetFeatures();
+      if(!checked.length){renderPHFeatureList();document.querySelectorAll('#ph-feature-list input').forEach(cb=>{cb.checked=['s11','s21','frequency','depth','moisture','epsReal','epsImag','tanDelta'].includes(cb.value);});}
+      const features=phGetFeatures(); const k=Math.max(2,Math.min(10,parseInt(document.getElementById('ph-folds').value)||5));
+      if(rows.length<k){setPHStatus(`São necessárias pelo menos ${k} amostras válidas com pH alvo.`,'warn');return;}
+      if(features.length<1){setPHStatus('Selecione pelo menos uma feature.','warn');return;}
+      const missing=features.filter(f=>rows.some(r=>phNum(r[f])==null)); if(missing.length){setPHStatus('Há valores ausentes nas features: '+missing.map(f=>PH_FEATURE_LABELS[f]).join(', ')+'. Se você importou S1P, desative S21 nas features ou use S2P.','warn');return;}
+      const opt={trees:parseInt(document.getElementById('ph-rf-trees').value)||100,depth:parseInt(document.getElementById('ph-rf-depth').value)||7,leaf:parseInt(document.getElementById('ph-rf-leaf').value)||2,C:phNum(document.getElementById('ph-svr-c').value)||10,eps:phNum(document.getElementById('ph-svr-eps').value)||0.05,gamma:phNum(document.getElementById('ph-svr-gamma').value)||0.15,seed:parseInt(document.getElementById('ph-seed').value)||42};
+      setPHStatus(`Executando 5-fold: RFR + SVR em ${rows.length} amostras. Aguarde...`,'');
+      const runButton=document.getElementById('ph-run-models-btn'); if(runButton)runButton.disabled=true;
+      setTimeout(()=>{
+        try{
+          const cv=phCrossValidate(rows,features,k,opt); const y=rows.map(r=>r.pH); const mr=phMetrics(y,cv.rfr), ms=phMetrics(y,cv.svr);
+      // Fit final models on all data for optional prediction use.
+      const st=phStdParams(rows,features), X=rows.map(r=>phTransform(r,features,st)); const rf=phRFRFit(X,y,opt), sv=phSVRFit(X,y,{C:opt.C,eps:opt.eps,gamma:opt.gamma});
+          phResults={rows,features,folds:k,opt,cv,y,rfrMetrics:mr,svrMetrics:ms,rf,sv,standardization:st};
+      const fmtM=(v)=>Number.isFinite(v)?v.toFixed(4):'—';
+      document.getElementById('ph-rfr-r2').textContent=fmtM(mr.r2);document.getElementById('ph-rfr-rmse').textContent=fmtM(mr.rmse);document.getElementById('ph-rfr-mae').textContent=fmtM(mr.mae);
+      document.getElementById('ph-svr-r2').textContent=fmtM(ms.r2);document.getElementById('ph-svr-rmse').textContent=fmtM(ms.rmse);document.getElementById('ph-svr-mae').textContent=fmtM(ms.mae);
+      renderPHCharts();
+      phRows.forEach((r,i)=>{r.rfrPrediction=cv.rfr[i];r.svrPrediction=cv.svr[i];r.fold=cv.fold[i];});renderPHTableWithPredictions();
+          setPHStatus(`Five-fold concluído: ${rows.length} amostras, ${features.length} features. RFR R²=${mr.r2.toFixed(4)}; SVR R²=${ms.r2.toFixed(4)}.`,'ok');
+        }catch(err){
+          console.error('Erro em RFR/SVR/5-fold:',err);
+          setPHStatus('Erro ao gerar RFR/SVR/5-fold: '+(err?.message||err)+'. Os dados da planilha foram preservados.','err');
+        }finally{
+          if(runButton)runButton.disabled=false;
+        }
+      },30);
+    }
+    function phChartOpts(){const n=id=>{const v=phNum(document.getElementById(id)?.value);return v==null?undefined:v;};return {x:(document.getElementById('ph-opt-x-title')?.value||'Measured Soil pH'),y:(document.getElementById('ph-opt-y-title')?.value||'Predicted Soil pH'),ts:n('ph-opt-title-size')||13,tick:n('ph-opt-tick-size')||12,legend:document.getElementById('ph-opt-legend-pos')?.value||'top',font:document.getElementById('ph-opt-font')?.value||'Segoe UI',ls:n('ph-opt-legend-size')||12,lw:n('ph-opt-line-width')||2,xmin:n('ph-opt-x-min'),xmax:n('ph-opt-x-max'),ymin:n('ph-opt-y-min'),ymax:n('ph-opt-y-max')};}
+    function phChartBase(o){return {responsive:true,maintainAspectRatio:false,scales:{x:{type:'linear',min:o.xmin,max:o.xmax,title:{display:true,text:o.x,color:'#1e293b',font:{family:o.font,weight:'bold',size:o.ts}},ticks:{color:'#1e293b',font:{family:o.font,size:o.tick}},grid:{color:'#e2e8f0'}},y:{min:o.ymin,max:o.ymax,title:{display:true,text:o.y,color:'#1e293b',font:{family:o.font,weight:'bold',size:o.ts}},ticks:{color:'#1e293b',font:{family:o.font,size:o.tick}},grid:{color:'#e2e8f0'}}},plugins:{legend:{display:o.legend!=='none',position:o.legend==='none'?'top':o.legend,labels:{color:'#1e293b',font:{family:o.font,size:o.ls}}},zoom:{pan:{enabled:true,mode:'xy',modifierKey:'ctrl'},zoom:{wheel:{enabled:true},pinch:{enabled:true},drag:{enabled:true,backgroundColor:'rgba(59,130,246,0.15)',borderColor:'rgba(59,130,246,0.6)',borderWidth:1},mode:'xy'}}}};}
+    function parityLine(y){const lo=Math.min(...y),hi=Math.max(...y);return [{x:lo,y:lo},{x:hi,y:hi}];}
+    function renderPHCharts(){
+      if(!phResults)return; const o=phChartOpts(), y=phResults.y, r=phResults.cv.rfr, s=phResults.cv.svr;
+      [phRFRChart,phRFRParityChart,phSVRChart,phCompareChart].forEach(c=>{if(c)c.destroy();});
+      // Escala no estilo do artigo: eixo cobre os dados com margem ~0.3–0.5
+      const allV=[...y,...r,...s].filter(Number.isFinite);
+      const lo=Math.min(...allV), hi=Math.max(...allV), pad=Math.max(0.3, (hi-lo)*0.15);
+      if(o.xmin==null) o.xmin=lo-pad; if(o.xmax==null) o.xmax=hi+pad;
+      if(o.ymin==null) o.ymin=lo-pad; if(o.ymax==null) o.ymax=hi+pad;
+      const common=phChartBase(o);
+      const parityData=[{x:o.xmin,y:o.xmin},{x:o.xmax,y:o.xmax}];
+      phRFRChart=new Chart(document.getElementById('ph-rfr-canvas').getContext('2d'),{type:'scatter',data:{datasets:[{label:'RFR Model (N='+y.length+')',data:y.map((v,i)=>({x:v,y:r[i],fold:phResults.cv.fold[i]})),borderWidth:o.lw,pointRadius:4,backgroundColor:'#3b82f6',borderColor:'#2563eb'},{label:'1:1 Parity Line',data:parityData,type:'line',borderColor:'#111827',borderDash:[7,5],borderWidth:o.lw,pointRadius:0}]},options:common});
+      phRFRParityChart=new Chart(document.getElementById('ph-rfr-parity-canvas').getContext('2d'),{type:'scatter',data:{datasets:[{label:'RFR — five-fold predictions',data:y.map((v,i)=>({x:v,y:r[i]})),pointRadius:4,backgroundColor:'#3b82f6',borderColor:'#2563eb',borderWidth:o.lw},{label:'1:1 Parity Line',data:parityData,type:'line',borderColor:'#111827',borderDash:[7,5],borderWidth:o.lw,pointRadius:0}]},options:common});
+      phSVRChart=new Chart(document.getElementById('ph-svr-canvas').getContext('2d'),{type:'scatter',data:{datasets:[{label:'SVR — five-fold predictions',data:y.map((v,i)=>({x:v,y:s[i]})),pointRadius:4,backgroundColor:'#a855f7',borderColor:'#7e22ce',borderWidth:o.lw},{label:'1:1 Parity Line',data:parityData,type:'line',borderColor:'#dc2626',borderDash:[7,5],borderWidth:o.lw,pointRadius:0}]},options:common});
+      phCompareChart=new Chart(document.getElementById('ph-compare-canvas').getContext('2d'),{type:'bar',data:{labels:['R²','RMSE','MAE'],datasets:[{label:'RFR',data:[phResults.rfrMetrics.r2,phResults.rfrMetrics.rmse,phResults.rfrMetrics.mae],backgroundColor:'#3b82f6'},{label:'SVR',data:[phResults.svrMetrics.r2,phResults.svrMetrics.rmse,phResults.svrMetrics.mae],backgroundColor:'#a855f7'}]},options:{...common,scales:{...common.scales,y:{...common.scales.y,min:undefined,title:{display:true,text:'Metric',font:{family:o.font,size:o.ts},color:'#1e293b'}}}}});
+    }
+    function applyPHChartOptions(){if(phResults)renderPHCharts();}
+    function resetPHZoom(name){const map={phRFRChart:phRFRChart,phRFRParityChart:phRFRParityChart,phSVRChart:phSVRChart,phCompareChart:phCompareChart};const c=map[name];if(c&&typeof c.resetZoom==='function')c.resetZoom();}
+    function renderPHTableWithPredictions(){
+      const el=document.getElementById('ph-data-table'); if(!el||!phResults)return; const headers=phTableHeaders(); const labels={id:'Amostra',s11:'S11 (dB)',s21:'S21 (dB)',frequency:'Frequência (GHz)',depth:'Profundidade (cm)',weight:'Peso (g)',moisture:'Umidade (%)',epsReal:"ε'",epsImag:"ε''",sigma:'σb (S/m)',tanDelta:'tanδ',pH:'pH medido',pHEmpirical:'pH calculado (artigo)'}; let h='<thead><tr>'+headers.map(x=>`<th>${labels[x]||x}</th>`).join('')+'<th>Fold</th><th>RFR previsto</th><th>SVR previsto</th><th>Ações</th></tr></thead><tbody>';
+      phRows.forEach((r,i)=>{h+='<tr>'+headers.map(k=>`<td><input class="ph-table-input" value="${r[k]??''}" onchange="updatePHCell(${i},'${k}',this.value)"></td>`).join('')+`<td>${r.fold??'—'}</td><td>${r.rfrPrediction==null?'—':Number(r.rfrPrediction).toFixed(5)}</td><td>${r.svrPrediction==null?'—':Number(r.svrPrediction).toFixed(5)}</td><td><button class="action-btn" onclick="removePHRow(${i})">×</button></td></tr>`;});
+      el.innerHTML=h+'</tbody>';
+    }
+    function exportPHPredictTable(){
+      if(!phRows.length){setPHStatus('Não há dados para exportar.','warn');return;}
+      const out=phRows.map(r=>({...r})); const ws=XLSX.utils.json_to_sheet(out),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'pH_ML');XLSX.writeFile(wb,'pH_ML_results.xlsx');
+    }
+    function clearPHCharts(){[phRFRChart,phRFRParityChart,phSVRChart,phCompareChart].forEach(c=>{if(c)c.destroy();});phRFRChart=phRFRParityChart=phSVRChart=phCompareChart=null;['ph-rfr-r2','ph-rfr-rmse','ph-rfr-mae','ph-svr-r2','ph-svr-rmse','ph-svr-mae'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent='—';});}
     function saveExcel(tableId, inputId) {
       const table = document.getElementById(tableId);
       const filename = document.getElementById(inputId).value || 'Export';
@@ -2069,6 +2989,8 @@
     // Inicializa visibilidade dos campos e idioma
     function bootUI() {
       updateModelHints();
+      renderPHFeatureList();
+      renderPHTable();
       setLanguage(currentLang || 'pt');
     }
     if (document.readyState === 'loading') {
