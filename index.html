@@ -622,7 +622,7 @@
       <p class="subtitle" data-i18n="appSubtitle" style="margin-bottom:0">S11/S21 + modelos de permissividade para solo</p>
     </div>
     <div class="app-header-right">
-      <span class="version-badge">v2.6.8</span>
+      <span class="version-badge">v2.6.10</span>
       <div class="lang-switch" title="Language / Idioma">
         <button type="button" class="lang-btn active" id="lang-pt" onclick="setLanguage('pt')">PT</button>
         <button type="button" class="lang-btn" id="lang-en" onclick="setLanguage('en')">EN</button>
@@ -962,16 +962,17 @@
       <div class="ph-actions" style="margin-top:15px">
         <button class="action-btn" onclick="downloadPHTemplate()">Baixar template CSV</button>
         <button class="action-btn ph-sample-btn" onclick="downloadPHSample()">Baixar arquivo de exemplo</button>
-        <button class="action-btn" onclick="document.getElementById('ph-file-in').click()">Importar CSV / Excel / XL</button>
+        <button class="action-btn" onclick="document.getElementById('ph-file-in').click()">Importar CSV / Excel / XL (vários)</button>
         <button class="action-btn" onclick="document.getElementById('ph-touchstone-in').click()">Importar S1P / S2P</button>
         <button class="action-btn" onclick="loadPHFromViewer()">Usar S1P/S2P do Viewer</button>
         <label style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#0b0e14;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12.5px;color:var(--text-secondary);">
           <input type="checkbox" id="ph-import-all-freq" style="width:15px;height:15px;accent-color:var(--accent);">
           Importar todos os pontos de frequência (não recomendado)
         </label>
-        <input id="ph-file-in" type="file" hidden accept=".csv,.xlsx,.xls,.xl,.XLS,.XLSX,.XL" onchange="handlePHFile(this.files); this.value=''">
+        <input id="ph-file-in" type="file" hidden multiple accept=".csv,.xlsx,.xls,.xl,.XLS,.XLSX,.XL" onchange="handlePHFile(this.files); this.value=''">
         <input id="ph-touchstone-in" type="file" hidden multiple accept=".s1p,.s2p,.S1P,.S2P" onchange="handlePHTouchstone(this.files); this.value=''">
       </div>
+      <div id="ph-source-list" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;"></div>
       <div class="ph-note" style="margin-top:10px"><strong>Touchstone:</strong> S1P → S11; S2P → S11 e S21. Por padrão o sistema importa <strong>1 amostra por arquivo</strong> (ponto de ressonância ≈ mínimo de S11 / 4,42 GHz), como no artigo (N≈98). <strong>Novas importações são adicionadas</strong> às amostras já existentes (não substituem). Não use “todos os pontos de frequência” para o ML — isso gera centenas de linhas com pH quase igual e o gráfico colapsa (R² negativo). Cada amostra precisa de um <strong>pH diferente</strong> (faixa 5,0–6,5).</div>
     </div>
 
@@ -1057,9 +1058,9 @@
           <div class="input-field"><label class="sec-label">RFR — árvores</label><input id="ph-rf-trees" type="number" value="100" min="10" max="500" step="10"></div>
           <div class="input-field"><label class="sec-label">RFR — profundidade máxima</label><input id="ph-rf-depth" type="number" value="7" min="1" max="20" step="1"></div>
           <div class="input-field"><label class="sec-label">RFR — mínimo por folha</label><input id="ph-rf-leaf" type="number" value="2" min="1" max="20" step="1"></div>
-          <div class="input-field"><label class="sec-label">SVR — C</label><input id="ph-svr-c" type="number" value="10" min="0.01" step="0.5"></div>
+          <div class="input-field"><label class="sec-label">SVR — C</label><input id="ph-svr-c" type="number" value="100" min="0.01" step="0.5"></div>
           <div class="input-field"><label class="sec-label">SVR — ε</label><input id="ph-svr-eps" type="number" value="0.05" min="0" step="0.01"></div>
-          <div class="input-field"><label class="sec-label">SVR — γ</label><input id="ph-svr-gamma" type="number" value="0.15" min="0.0001" step="0.01"></div>
+          <div class="input-field"><label class="sec-label">SVR — γ</label><input id="ph-svr-gamma" type="number" value="0.1" min="0.0001" step="0.01"></div>
           <div class="input-field"><label class="sec-label">Seed</label><input id="ph-seed" type="number" value="42" step="1"></div>
         </div>
       </div>
@@ -2185,27 +2186,152 @@
 
     // Epsilon-SVR dual solved by a projected-gradient style optimizer.
     // The Gaussian kernel is exactly K(Xi,X)=exp(-gamma*||Xi-X||^2) from the paper.
-    function phSVRFit(X,y,opt){
-      const n=X.length, K=Array.from({length:n},()=>Array(n).fill(0));
-      for(let i=0;i<n;i++)for(let j=0;j<n;j++)K[i][j]=Math.exp(-opt.gamma*phSqDist(X[i],X[j]));
-      const a=new Array(n).fill(0), astar=new Array(n).fill(0); let b=0;
-      // Stable projected updates for the two dual variables. This is intentionally bounded by C.
-      const lr=0.01/(1+opt.gamma), iters=900;
-      for(let it=0;it<iters;it++){
-        const f=new Array(n).fill(b); for(let i=0;i<n;i++){let z=0;for(let j=0;j<n;j++)z+=(a[j]-astar[j])*K[j][i];f[i]+=z;}
-        for(let i=0;i<n;i++){
-          const e=f[i]-y[i];
-          let ga=0, gs=0;
-          if(e>opt.eps) ga=e; else if(e<-opt.eps) gs=-e;
-          a[i]=Math.min(opt.C,Math.max(0,a[i]-lr*ga));
-          astar[i]=Math.min(opt.C,Math.max(0,astar[i]-lr*gs));
+    function phSVRFit(X, y, opt){
+      // ε-SVR com kernel Gaussiano K(xi,x)=exp(-γ||xi-x||²) — forma do artigo (Smola & Schölkopf).
+      // Otimização: dual coordinate descent (estilo LIBSVM), bem mais estável que o gradiente projetado antigo.
+      // Dual: max -1/2 Σ(αi-αi*)(αj-αj*)Kij - ε Σ(αi+αi*) + Σ yi(αi-αi*)
+      // s.t. Σ(αi-αi*)=0,  0≤αi,αi*≤C
+      const n = X.length;
+      if (!n) return { predict: Z => Z.map(() => 0) };
+      const C = Math.max(1e-6, opt.C ?? 10);
+      const eps = Math.max(0, opt.eps ?? 0.05);
+      const gamma = Math.max(1e-8, opt.gamma ?? 0.15);
+
+      // Kernel matrix
+      const K = Array.from({ length: n }, () => Array(n).fill(0));
+      for (let i = 0; i < n; i++) {
+        K[i][i] = 1;
+        for (let j = i + 1; j < n; j++) {
+          const v = Math.exp(-gamma * phSqDist(X[i], X[j]));
+          K[i][j] = v; K[j][i] = v;
         }
-        let sum=0;for(let i=0;i<n;i++)sum+=a[i]-astar[i]; b-=lr*sum/n;
       }
-      // bias correction over near-support vectors
-      const sv=[]; for(let i=0;i<n;i++) if(Math.abs(a[i]-astar[i])>1e-5)sv.push(i);
-      if(sv.length){let bs=0,c=0;for(const i of sv){let z=y[i];for(let j=0;j<n;j++)z-=(a[j]-astar[j])*K[j][i];bs+=z;c++;}return {X,y,a,astar,b:bs/c,svCount:sv.length,predict:Z=>Z.map(x=>{let z=bs/c;for(let j=0;j<n;j++){const coef=a[j]-astar[j];if(Math.abs(coef)>1e-7)z+=coef*Math.exp(-opt.gamma*phSqDist(X[j],x));}return z;})};}
-      return {X,y,a,astar,b,predict:Z=>Z.map(x=>{let z=b;for(let j=0;j<n;j++)z+=(a[j]-astar[j])*Math.exp(-opt.gamma*phSqDist(X[j],x));return z;})};
+
+      // α e α* empacotados: beta[i] = αi - αi*  ∈ [-C, C]
+      // Para ε-SVR dual coordinate descent usamos variáveis α, α* separadas
+      const alpha = new Array(n).fill(0);
+      const alphaStar = new Array(n).fill(0);
+      // f[i] = Σ_j (αj-αj*) Kji  (sem bias; bias tratado depois)
+      const f = new Array(n).fill(0);
+
+      const maxIter = Math.max(2000, 40 * n);
+      const tol = 1e-4;
+
+      for (let it = 0; it < maxIter; it++) {
+        let maxViol = 0;
+        for (let i = 0; i < n; i++) {
+          // Gradientes parciais do dual em αi e αi*
+          // Gα  =  f[i] - yi + ε   (derivada de -dual w.r.t α, sinal para minimização do negativo)
+          // Gα* = -f[i] + yi + ε
+          // Usamos atualização de coordenada que projeta em [0,C]
+          const yi = y[i];
+          const fi = f[i];
+          // Resíduo tipo tubo-ε
+          // Para α (erro positivo acima do tubo): se yi < f - eps, aumenta α
+          // Coordenada αi:
+          let Ga = fi - yi + eps;      // gradiente p/ maximizar dual ~ -(fi - yi + eps) na formulação min
+          // Dual coordinate descent (maximizar dual): step αi ← proj[0,C](αi - Ga / Kii)
+          // onde Ga = Σ(α-α*)K - y + ε  para α, e Ga* = -(Σ(α-α*)K) + y + ε para α*
+          const Kii = K[i][i] || 1;
+
+          // --- update αi ---
+          // grad of dual obj w.r.t αi (to maximize):  -Σj(αj-αj*)Kij + yi - ε = -fi + yi - ε
+          // so for minimizing -dual: Gi = fi - yi + ε
+          let Gi = fi - yi + eps;
+          // PG: projected gradient
+          let PG = 0;
+          if (alpha[i] === 0) PG = Math.min(0, Gi);
+          else if (alpha[i] === C) PG = Math.max(0, Gi);
+          else PG = Gi;
+          maxViol = Math.max(maxViol, Math.abs(PG));
+          if (Math.abs(PG) > 1e-12) {
+            const aOld = alpha[i];
+            let aNew = aOld - Gi / Kii;
+            if (aNew < 0) aNew = 0;
+            if (aNew > C) aNew = C;
+            const delta = aNew - aOld;
+            if (delta !== 0) {
+              alpha[i] = aNew;
+              for (let j = 0; j < n; j++) f[j] += delta * K[i][j];
+            }
+          }
+
+          // --- update αi* ---
+          // grad of dual obj w.r.t αi* (maximize): +Σj(αj-αj*)Kij - yi - ε = fi - yi - ε
+          // minimize -dual: Gi* = -fi + yi + ε
+          let Gis = -fi + yi + eps;
+          // After α update, fi changed — recompute local fi
+          // fi already updated in f[]
+          Gis = -f[i] + yi + eps;
+          PG = 0;
+          if (alphaStar[i] === 0) PG = Math.min(0, Gis);
+          else if (alphaStar[i] === C) PG = Math.max(0, Gis);
+          else PG = Gis;
+          maxViol = Math.max(maxViol, Math.abs(PG));
+          if (Math.abs(PG) > 1e-12) {
+            const aOld = alphaStar[i];
+            let aNew = aOld - Gis / Kii;
+            if (aNew < 0) aNew = 0;
+            if (aNew > C) aNew = C;
+            const delta = aNew - aOld;
+            if (delta !== 0) {
+              alphaStar[i] = aNew;
+              // α* contributes com sinal oposto: (α-α*), então Δf = -delta * K
+              for (let j = 0; j < n; j++) f[j] -= delta * K[i][j];
+            }
+          }
+        }
+        if (maxViol < tol) break;
+      }
+
+      // Bias b: média sobre vetores de suporte no tubo (0 < α < C ou 0 < α* < C)
+      const coef = alpha.map((a, i) => a - alphaStar[i]);
+      const free = [];
+      for (let i = 0; i < n; i++) {
+        if ((alpha[i] > 1e-6 && alpha[i] < C - 1e-6) || (alphaStar[i] > 1e-6 && alphaStar[i] < C - 1e-6)) {
+          free.push(i);
+        }
+      }
+      let b = 0;
+      if (free.length) {
+        // Para SV livre com α>0: b = yi - ε - Σ coef K
+        // Para SV livre com α*>0: b = yi + ε - Σ coef K
+        let sum = 0;
+        for (const i of free) {
+          let kx = 0;
+          for (let j = 0; j < n; j++) if (Math.abs(coef[j]) > 1e-12) kx += coef[j] * K[j][i];
+          if (alpha[i] > 1e-6 && alpha[i] < C - 1e-6) sum += y[i] - eps - kx;
+          else sum += y[i] + eps - kx;
+        }
+        b = sum / free.length;
+      } else {
+        // fallback: todos os pontos com |coef|>0
+        const sv = [];
+        for (let i = 0; i < n; i++) if (Math.abs(coef[i]) > 1e-8) sv.push(i);
+        if (sv.length) {
+          let sum = 0;
+          for (const i of sv) {
+            let kx = 0;
+            for (let j = 0; j < n; j++) if (Math.abs(coef[j]) > 1e-12) kx += coef[j] * K[j][i];
+            sum += y[i] - kx;
+          }
+          b = sum / sv.length;
+        } else {
+          b = phMean(y);
+        }
+      }
+
+      const svCount = coef.filter(c => Math.abs(c) > 1e-8).length;
+      return {
+        X, y, coef, b, svCount, gamma, C, eps,
+        predict: (Z) => Z.map(x => {
+          let z = b;
+          for (let j = 0; j < n; j++) {
+            if (Math.abs(coef[j]) > 1e-12) z += coef[j] * Math.exp(-gamma * phSqDist(X[j], x));
+          }
+          return z;
+        })
+      };
     }
 
     function phGetFeatures(){return Array.from(document.querySelectorAll('#ph-feature-list input:checked')).map(x=>x.value);}
@@ -2231,8 +2357,49 @@
     }
     function updatePHCell(i,k,v){phRows[i][k]=v;}
     function addPHRow(){const id=phRows.length+1;phRows.push({id,s11:'',s21:'',frequency:'',depth:'',weight:'',moisture:'',epsReal:'',epsImag:'',sigma:'',tanDelta:'',pH:'',pHEmpirical:''});renderPHTable();}
-    function removePHRow(i){phRows.splice(i,1);renderPHTable();}
-    function clearPHData(){phRows=[];phResults=null;phPermittivityReady=false;phEmpiricalPHReady=false;renderPHTable();clearPHCharts();const b=document.getElementById('ph-run-models-btn');if(b)b.disabled=true;const e=document.getElementById('ph-perm-status');if(e){e.className='ph-status';e.textContent='Informe a % de água e clique no botão para preencher ε′/ε″.';}setPHStatus('Dados limpos. Aguardando dados experimentais.','');}
+    function removePHRow(i){
+      phRows.splice(i,1);
+      phRows.forEach((r,idx)=>r.id=idx+1);
+      phResults=null; clearPHCharts();
+      renderPHTable(); renderPHSourceList();
+    }
+    function removePHBySource(source){
+      const before=phRows.length;
+      phRows=phRows.filter(r=>(r._sourceFile||'')!==source);
+      phRows.forEach((r,idx)=>r.id=idx+1);
+      phResults=null; clearPHCharts();
+      phPermittivityReady=phRows.some(r=>phNum(r.epsReal)!=null);
+      const btn=document.getElementById('ph-run-models-btn');
+      if(btn) btn.disabled=!(phPermittivityReady && phRows.some(r=>phNum(r.pH)!=null));
+      renderPHTable(); renderPHSourceList();
+      setPHStatus(`Removido “${source}” (${before-phRows.length} linha(s)). Restam ${phRows.length} amostra(s).`,'ok');
+    }
+    function renderPHSourceList(){
+      const el=document.getElementById('ph-source-list');
+      if(!el) return;
+      const counts={};
+      phRows.forEach(r=>{
+        const s=r._sourceFile||'(manual / sem arquivo)';
+        counts[s]=(counts[s]||0)+1;
+      });
+      const keys=Object.keys(counts);
+      if(!keys.length){ el.innerHTML=''; return; }
+      el.innerHTML=keys.map(s=>{
+        const safe=String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+        const jsSafe=String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        return `<div style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#1e2533;border:1px solid var(--border);border-radius:10px;font-size:12.5px;">
+          <span style="color:#e2e8f0;">📄 <strong>${safe}</strong> <span style="color:var(--text-secondary);">(${counts[s]} amostra${counts[s]>1?'s':''})</span></span>
+          <button class="btn-remove" style="margin-left:0;padding:4px 10px;font-size:12px;" onclick="removePHBySource('${jsSafe}')" title="Remover este arquivo">Remover</button>
+        </div>`;
+      }).join('') + (keys.length>1?`<button class="action-btn" style="border-color:var(--danger);color:var(--danger);" onclick="clearPHData()">Remover todos</button>`:'');
+    }
+    function clearPHData(){
+      phRows=[];phResults=null;phPermittivityReady=false;phEmpiricalPHReady=false;
+      renderPHTable(); renderPHSourceList(); clearPHCharts();
+      const b=document.getElementById('ph-run-models-btn');if(b)b.disabled=true;
+      const e=document.getElementById('ph-perm-status');if(e){e.className='ph-status';e.textContent='Informe a % de água e clique no botão para preencher ε′/ε″.';}
+      setPHStatus('Dados limpos. Aguardando dados experimentais.','');
+    }
     function setPHStatus(msg,type=''){const e=document.getElementById('ph-status');e.textContent=msg;e.className='ph-status '+type;}
 
     function phDownloadText(filename,text,type='text/csv;charset=utf-8'){
@@ -2355,7 +2522,7 @@
                 const hasS21=phRows.some(r=>phNum(r.s21)!=null);
                 renderPHFeatureList();
                 document.querySelectorAll('#ph-feature-list input').forEach(cb=>{cb.checked=['s11','frequency','depth','moisture','epsReal','epsImag','tanDelta'].includes(cb.value)||(hasS21&&cb.value==='s21');});
-                renderPHTable();
+                renderPHTable(); renderPHSourceList();
                 const modeMsg = importAll
                   ? `+${imported.length} pontos de frequência (${files.length} arquivo(s)). Total na tabela: ${phRows.length}.`
                   : `+${imported.length} amostra(s) (1 por arquivo, ressonância / ~4,42 GHz; ${totalPts} pts de freq.). Total na tabela: ${phRows.length}.`;
@@ -2451,199 +2618,186 @@
       return {rows:out, aggregated:true, groups:out.length, original:mapped.length};
     }
     function handlePHFile(files){
-      if(!files.length)return;
-      const f=files[0];
-      const name=(f.name||'').toLowerCase();
-      const reader=new FileReader();
-      reader.onload=e=>{
-        try{
-          const isCsv = name.endsWith('.csv');
-          const wb=XLSX.read(e.target.result,{type:isCsv?'string':'array', cellDates:true});
-          const sh=wb.Sheets[wb.SheetNames[0]];
-          // Ler como matriz para tolerar cabeçalhos irregulars (ex.: linha de unidades, coluna de amostra)
-          const matrix=XLSX.utils.sheet_to_json(sh,{header:1, defval:''});
-          if(!matrix.length){ setPHStatus('Arquivo sem linhas.','warn'); return; }
+      if(!files || !files.length) return;
+      const fileList = Array.from(files);
+      let pending = fileList.length;
+      let totalAdded = 0;
+      const errors = [];
+      const summaries = [];
 
-          // Localizar linha de cabeçalho (contém S11 ou Freq ou pH)
-          const norm = (v)=>String(v??'').trim().toLowerCase().replace(/\s+/g,' ');
-          let headerRow = -1;
-          for(let i=0;i<Math.min(matrix.length,15);i++){
-            const cells = matrix[i].map(norm);
-            if(cells.some(c=>c==='s11'||c==='s21'||c==='freq'||c==='frequency'||c==='ph'||c==='pH'.toLowerCase())){
-              headerRow = i; break;
-            }
+      const processOne = (f, arrayBufferOrText) => {
+        const name = (f.name || '').toLowerCase();
+        const isCsv = name.endsWith('.csv');
+        const wb = XLSX.read(arrayBufferOrText, { type: isCsv ? 'string' : 'array', cellDates: true });
+        const sh = wb.Sheets[wb.SheetNames[0]];
+        const matrix = XLSX.utils.sheet_to_json(sh, { header: 1, defval: '' });
+        if (!matrix.length) throw new Error('sem linhas');
+
+        const norm = (v) => String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+        let headerRow = -1;
+        for (let i = 0; i < Math.min(matrix.length, 15); i++) {
+          const cells = matrix[i].map(norm);
+          if (cells.some(c => c === 's11' || c === 's21' || c === 'freq' || c === 'frequency' || c === 'ph')) {
+            headerRow = i; break;
           }
-          if(headerRow<0) headerRow = 0;
-
-          const headers = matrix[headerRow].map(h=>norm(h));
-          // Mapear índices de coluna (formato do lab: S11, S21, Freq, DEPTH, W(g), con%, pH)
-          const findCol = (...aliases)=>{
-            for(const a of aliases){
-              const i = headers.findIndex(h=>h===a || h.includes(a));
-              if(i>=0) return i;
-            }
-            return -1;
-          };
-          let cS11=findCol('s11');
-          let cS21=findCol('s21');
-          let cFreq=findCol('freq','frequency','f (ghz)','f_ghz');
-          let cDepth=findCol('depth','profundidade','d');
-          let cWeight=findCol('w(g)','weight','peso','massa','w (g)');
-          let cMoist=findCol('con%','con %','moisture','umidade','water','theta','θ','con');
-          let cPH=findCol('ph','pH'.toLowerCase(),'soil ph');
-          let cSample=findCol('sample','amostra','id');
-          // Se a 1ª coluna não tem cabeçalho mas tem S65, S66... usar como amostra
-          if(cSample<0 && headers[0]==='') cSample = 0;
-
-          // Fallback posicional do formato do artigo/lab (col A=id, B=S11, C=S21, D=Freq, E=DEPTH, F=W, G=con%, H=pH)
-          if(cS11<0 && cFreq<0 && headers.length>=7){
-            cSample=0; cS11=1; cS21=2; cFreq=3; cDepth=4; cWeight=5; cMoist=6; cPH=7;
-          }
-
-          const mapped=[];
-          for(let i=headerRow+1;i<matrix.length;i++){
-            const row = matrix[i];
-            if(!row || !row.length) continue;
-            const cellStr = row.map(v=>String(v??'').trim()).join(' ');
-            // pular linhas de unidade / vazias
-            if(/\(db\)|\(ghz\)/i.test(cellStr) && !/\d/.test(cellStr.replace(/[^\d.-]/g,''))) continue;
-            const get = (idx)=> (idx>=0 && idx<row.length) ? row[idx] : '';
-            const s11 = phNum(get(cS11));
-            const s21 = phNum(get(cS21));
-            const freq = phNormalizeFreqGHz(get(cFreq));
-            const depth = phNum(get(cDepth));
-            const weight = phNum(get(cWeight));
-            let moist = phNum(get(cMoist));
-            // con% no arquivo vem como fração 0.2–0.8 → converter para %
-            if(moist!=null && moist<=1) moist = moist*100;
-            const pH = phNum(get(cPH));
-            const sample = String(get(cSample)??'').trim();
-            // exige pelo menos S11 ou pH + frequência
-            if(s11==null && pH==null) continue;
-            if(s11==null && freq==null && pH==null) continue;
-            // linha só com texto
-            if(s11==null && s21==null && freq==null && depth==null && pH==null) continue;
-
-            mapped.push({
-              id:0,
-              s11: s11!=null?s11:'',
-              s21: s21!=null?s21:'',
-              frequency: freq!=null?Number(freq.toFixed(6)):'',
-              depth: depth!=null?depth:'',
-              weight: weight!=null?weight:'',
-              moisture: moist!=null?Number(moist.toFixed(4)):'',
-              epsReal:'', epsImag:'', sigma:'', tanDelta:'',
-              pH: pH!=null?pH:'',
-              pHEmpirical:'',
-              _sample: sample,
-              _group:''
-            });
-          }
-
-          if(!mapped.length){
-            setPHStatus('Nenhuma linha de dados encontrada. Verifique se há colunas S11, Freq, DEPTH, W(g), con%, pH.','warn');
-            return;
-          }
-
-          // NÃO agregar quando cada linha já é uma amostra (pH/S11 variam) — caso do arquivo 50g 20–80%
-          const uniquePH = new Set(mapped.map(r=>String(r.pH))).size;
-          const uniqueS11 = new Set(mapped.map(r=>String(r.s11))).size;
-          let rows = mapped;
-          let aggNote = '';
-          if(mapped.length>=20 && uniquePH<=2 && uniqueS11<=3){
-            const agg = phAggregateSpreadsheetRows(mapped);
-            if(agg.aggregated){
-              rows = agg.rows;
-              aggNote = ` Varredura reduzida: ${agg.original}→${rows.length}.`;
-            }
-          }
-
-          const baseId = phRows.length;
-          rows.forEach((r,i)=>{ r.id = baseId+i+1; });
-          phRows = phRows.concat(rows);
-          phResults=null; phEmpiricalPHReady=false; clearPHCharts();
-
-          const hasPH = rows.every(r=>phNum(r.pH)!=null);
-          const hasMoist = rows.every(r=>phNum(r.moisture)!=null);
-          const hasS11 = rows.every(r=>phNum(r.s11)!=null);
-          const hasFreq = rows.every(r=>phNum(r.frequency)!=null);
-          const hasDepth = rows.every(r=>phNum(r.depth)!=null);
-
-          // Automação: se tem umidade + frequência, calcular ε′/ε″ com Topp
-          let autoEps = 0;
-          if(hasMoist && hasFreq){
-            const methodEl=document.getElementById('ph-perm-method');
-            if(methodEl) methodEl.value='topp';
-            // média da umidade para o campo de UI (só referência)
-            const avgM = rows.reduce((s,r)=>s+(phNum(r.moisture)||0),0)/rows.length;
-            const wEl=document.getElementById('ph-water-percent');
-            if(wEl) wEl.value = avgM.toFixed(2);
-
-            const EPS0=8.854187817e-12;
-            const sigma=phNum(document.getElementById('soil-sigma')?.value);
-            const tempC=phNum(document.getElementById('soil-temp')?.value);
-            const a=phNum(document.getElementById('topp-a')?.value), b=phNum(document.getElementById('topp-b')?.value);
-            const c=phNum(document.getElementById('topp-c')?.value), d=phNum(document.getElementById('topp-d')?.value);
-            const aa=Number.isFinite(a)?a:3.03, bb=Number.isFinite(b)?b:9.3, cc=Number.isFinite(c)?c:146.0, dd=Number.isFinite(d)?d:-76.7;
-            const tc=Number.isFinite(tempC)?tempC:20;
-            const sig=Number.isFinite(sigma)?sigma:0.05;
-            const coeffIds=['ph-a0','ph-a1','ph-a2','ph-a3','ph-a4','ph-a5','ph-a6'];
-            const coeff=coeffIds.map(id=>phNum(document.getElementById(id)?.value));
-            const hasCoeff=coeff.every(Number.isFinite);
-
-            // calcular só nas linhas recém-importadas
-            for(let i=baseId;i<phRows.length;i++){
-              const r=phRows[i];
-              let theta=phNum(r.moisture); if(theta!=null&&theta>1) theta/=100;
-              if(theta==null) continue;
-              const fGHz=phNormalizeFreqGHz(r.frequency);
-              if(fGHz==null||fGHz<=0) continue;
-              const fHz=fGHz*1e9;
-              const epsW=debyeWater(fHz,tc);
-              const condTerm=sig/(2*Math.PI*fHz*EPS0);
-              r.epsReal=aa+bb*theta+cc*theta*theta+dd*theta*theta*theta;
-              r.epsImag=theta*(condTerm+epsW.im);
-              r.sigma=sig;
-              r.tanDelta=r.epsReal!==0?r.epsImag/r.epsReal:null;
-              if(hasCoeff){
-                const phEmp=coeff[0]+coeff[1]*r.epsReal+coeff[2]*r.epsImag+coeff[3]*sig+coeff[4]*sig*r.epsReal+coeff[5]*sig+coeff[6]*tc;
-                r.pHEmpirical=Number.isFinite(phEmp)?phEmp.toFixed(4):'';
-              }
-              autoEps++;
-            }
-            phPermittivityReady = phRows.some(r=>phNum(r.epsReal)!=null);
-          } else {
-            phPermittivityReady = phRows.some(r=>phNum(r.epsReal)!=null);
-          }
-
-          renderPHFeatureList();
-          document.querySelectorAll('#ph-feature-list input').forEach(cb=>{
-            cb.checked=['s11','s21','frequency','depth','moisture','epsReal','epsImag','tanDelta'].includes(cb.value);
-          });
-          renderPHTable();
-
-          const readyForML = hasPH && phPermittivityReady && hasS11;
-          const btn=document.getElementById('ph-run-models-btn');
-          if(btn) btn.disabled = !readyForML;
-
-          let msg=`+${rows.length} amostra(s) de “${f.name}”. Total: ${phRows.length}.${aggNote}`;
-          if(hasS11&&hasFreq&&hasDepth&&hasPH) msg+=' Dados do lab reconhecidos (S11, S21, Freq, DEPTH, W, con%, pH).';
-          if(autoEps) msg+=` ε′/ε″ calculados automaticamente (Topp) em ${autoEps} linha(s).`;
-          if(readyForML) msg+=' Pronto para RFR/SVR — clique em “Gerar RFR + SVR + 5-fold”.';
-          else {
-            if(!hasPH) msg+=' Falta pH em algumas linhas.';
-            if(!phPermittivityReady) msg+=' Calcule ε′/ε″ na etapa 2.';
-          }
-          setPHStatus(msg,'ok');
-          const pe=document.getElementById('ph-perm-status');
-          if(pe){ pe.className='ph-status ok'; pe.textContent=autoEps?`Importação automática: ${rows.length} amostras, ε′/ε″ preenchidos.`:`${rows.length} amostras importadas.`; }
-        }catch(err){
-          console.error(err);
-          setPHStatus('Erro ao importar: '+err.message,'err');
         }
+        if (headerRow < 0) headerRow = 0;
+        const headers = matrix[headerRow].map(h => norm(h));
+        const findCol = (...aliases) => {
+          for (const a of aliases) {
+            const i = headers.findIndex(h => h === a || h.includes(a));
+            if (i >= 0) return i;
+          }
+          return -1;
+        };
+        let cS11 = findCol('s11');
+        let cS21 = findCol('s21');
+        let cFreq = findCol('freq', 'frequency', 'f (ghz)', 'f_ghz');
+        let cDepth = findCol('depth', 'profundidade', 'd');
+        let cWeight = findCol('w(g)', 'weight', 'peso', 'massa', 'w (g)');
+        let cMoist = findCol('con%', 'con %', 'moisture', 'umidade', 'water', 'theta', 'θ', 'con');
+        let cPH = findCol('ph', 'soil ph');
+        let cSample = findCol('sample', 'amostra', 'id');
+        if (cSample < 0 && headers[0] === '') cSample = 0;
+        if (cS11 < 0 && cFreq < 0 && headers.length >= 7) {
+          cSample = 0; cS11 = 1; cS21 = 2; cFreq = 3; cDepth = 4; cWeight = 5; cMoist = 6; cPH = 7;
+        }
+
+        const mapped = [];
+        for (let i = headerRow + 1; i < matrix.length; i++) {
+          const row = matrix[i];
+          if (!row || !row.length) continue;
+          const cellStr = row.map(v => String(v ?? '').trim()).join(' ');
+          if (/\(db\)|\(ghz\)/i.test(cellStr) && !/\d/.test(cellStr.replace(/[^\d.-]/g, ''))) continue;
+          const get = (idx) => (idx >= 0 && idx < row.length) ? row[idx] : '';
+          const s11 = phNum(get(cS11));
+          const s21 = phNum(get(cS21));
+          const freq = phNormalizeFreqGHz(get(cFreq));
+          const depth = phNum(get(cDepth));
+          const weight = phNum(get(cWeight));
+          let moist = phNum(get(cMoist));
+          if (moist != null && moist <= 1) moist = moist * 100;
+          const pH = phNum(get(cPH));
+          const sample = String(get(cSample) ?? '').trim();
+          if (s11 == null && pH == null) continue;
+          if (s11 == null && s21 == null && freq == null && depth == null && pH == null) continue;
+
+          mapped.push({
+            id: 0,
+            s11: s11 != null ? s11 : '',
+            s21: s21 != null ? s21 : '',
+            frequency: freq != null ? Number(freq.toFixed(6)) : '',
+            depth: depth != null ? depth : '',
+            weight: weight != null ? weight : '',
+            moisture: moist != null ? Number(moist.toFixed(4)) : '',
+            epsReal: '', epsImag: '', sigma: '', tanDelta: '',
+            pH: pH != null ? pH : '',
+            pHEmpirical: '',
+            _sample: sample,
+            _group: '',
+            _sourceFile: f.name || 'arquivo'
+          });
+        }
+        if (!mapped.length) throw new Error('nenhuma linha de dados');
+
+        const uniquePH = new Set(mapped.map(r => String(r.pH))).size;
+        const uniqueS11 = new Set(mapped.map(r => String(r.s11))).size;
+        let rows = mapped;
+        if (mapped.length >= 20 && uniquePH <= 2 && uniqueS11 <= 3) {
+          const agg = phAggregateSpreadsheetRows(mapped);
+          if (agg.aggregated) {
+            rows = agg.rows;
+            rows.forEach(r => { r._sourceFile = f.name || 'arquivo'; });
+          }
+        }
+
+        const baseId = phRows.length;
+        rows.forEach((r, i) => { r.id = baseId + i + 1; r._sourceFile = r._sourceFile || f.name || 'arquivo'; });
+        phRows = phRows.concat(rows);
+
+        // Auto Topp se tiver umidade + freq
+        const hasMoist = rows.every(r => phNum(r.moisture) != null);
+        const hasFreq = rows.every(r => phNum(r.frequency) != null);
+        let autoEps = 0;
+        if (hasMoist && hasFreq) {
+          const methodEl = document.getElementById('ph-perm-method');
+          if (methodEl) methodEl.value = 'topp';
+          const avgM = rows.reduce((s, r) => s + (phNum(r.moisture) || 0), 0) / rows.length;
+          const wEl = document.getElementById('ph-water-percent');
+          if (wEl) wEl.value = avgM.toFixed(2);
+          const EPS0 = 8.854187817e-12;
+          const sigma = phNum(document.getElementById('soil-sigma')?.value);
+          const tempC = phNum(document.getElementById('soil-temp')?.value);
+          const a = phNum(document.getElementById('topp-a')?.value), b = phNum(document.getElementById('topp-b')?.value);
+          const c = phNum(document.getElementById('topp-c')?.value), d = phNum(document.getElementById('topp-d')?.value);
+          const aa = Number.isFinite(a) ? a : 3.03, bb = Number.isFinite(b) ? b : 9.3;
+          const cc = Number.isFinite(c) ? c : 146.0, dd = Number.isFinite(d) ? d : -76.7;
+          const tc = Number.isFinite(tempC) ? tempC : 20;
+          const sig = Number.isFinite(sigma) ? sigma : 0.05;
+          const coeff = ['ph-a0','ph-a1','ph-a2','ph-a3','ph-a4','ph-a5','ph-a6'].map(id => phNum(document.getElementById(id)?.value));
+          const hasCoeff = coeff.every(Number.isFinite);
+          for (let i = baseId; i < phRows.length; i++) {
+            const r = phRows[i];
+            let theta = phNum(r.moisture); if (theta != null && theta > 1) theta /= 100;
+            if (theta == null) continue;
+            const fGHz = phNormalizeFreqGHz(r.frequency);
+            if (fGHz == null || fGHz <= 0) continue;
+            const fHz = fGHz * 1e9;
+            const epsW = debyeWater(fHz, tc);
+            const condTerm = sig / (2 * Math.PI * fHz * EPS0);
+            r.epsReal = aa + bb * theta + cc * theta * theta + dd * theta * theta * theta;
+            r.epsImag = theta * (condTerm + epsW.im);
+            r.sigma = sig;
+            r.tanDelta = r.epsReal !== 0 ? r.epsImag / r.epsReal : null;
+            if (hasCoeff) {
+              const phEmp = coeff[0] + coeff[1] * r.epsReal + coeff[2] * r.epsImag + coeff[3] * sig + coeff[4] * sig * r.epsReal + coeff[5] * sig + coeff[6] * tc;
+              r.pHEmpirical = Number.isFinite(phEmp) ? phEmp.toFixed(4) : '';
+            }
+            autoEps++;
+          }
+        }
+        return { n: rows.length, autoEps, name: f.name };
       };
-      if(name.endsWith('.csv')) reader.readAsText(f);
-      else reader.readAsArrayBuffer(f);
+
+      fileList.forEach(f => {
+        const reader = new FileReader();
+        const isCsv = (f.name || '').toLowerCase().endsWith('.csv');
+        reader.onload = (e) => {
+          try {
+            const result = processOne(f, e.target.result);
+            totalAdded += result.n;
+            summaries.push(`${result.name}: +${result.n}` + (result.autoEps ? ` (ε′ auto)` : ''));
+          } catch (err) {
+            errors.push(`${f.name}: ${err.message || err}`);
+          } finally {
+            pending--;
+            if (pending === 0) {
+              phResults = null;
+              phEmpiricalPHReady = false;
+              clearPHCharts();
+              phPermittivityReady = phRows.some(r => phNum(r.epsReal) != null);
+              const hasPH = phRows.some(r => phNum(r.pH) != null);
+              const btn = document.getElementById('ph-run-models-btn');
+              if (btn) btn.disabled = !(phPermittivityReady && hasPH);
+              renderPHFeatureList();
+              document.querySelectorAll('#ph-feature-list input').forEach(cb => {
+                cb.checked = ['s11','s21','frequency','depth','moisture','epsReal','epsImag','tanDelta'].includes(cb.value);
+              });
+              renderPHTable();
+              renderPHSourceList();
+              let msg = `Importados ${fileList.length} arquivo(s): +${totalAdded} amostra(s). Total na tabela: ${phRows.length}.`;
+              if (summaries.length) msg += ' [' + summaries.join('; ') + ']';
+              if (errors.length) msg += ' Erros: ' + errors.join(' | ');
+              if (phPermittivityReady && hasPH) msg += ' Pronto para RFR/SVR.';
+              setPHStatus(msg, errors.length && !totalAdded ? 'err' : 'ok');
+              const pe = document.getElementById('ph-perm-status');
+              if (pe) { pe.className = 'ph-status ok'; pe.textContent = msg; }
+            }
+          }
+        };
+        if (isCsv) reader.readAsText(f);
+        else reader.readAsArrayBuffer(f);
+      });
     }
 
     // Calcula ε′/ε″ usando exatamente a mesma lógica dos três modelos da aba principal.
@@ -2826,7 +2980,7 @@
       const pb=document.getElementById('ph-run-models-btn');if(pb)pb.disabled=true;
       renderPHFeatureList();
       document.querySelectorAll('#ph-feature-list input').forEach(cb=>{cb.checked=['s11','s21','frequency','depth','moisture','epsReal','epsImag','tanDelta'].includes(cb.value);});
-      renderPHTable();
+      renderPHTable(); renderPHSourceList();
       const mode = importAll ? `+${newRows.length} pontos de frequência` : `+${newRows.length} amostra(s) (1 por arquivo no Viewer)`;
       setPHStatus(mode+`. Total na tabela: ${phRows.length}. Pode adicionar mais. Use “Limpar dados” para recomeçar.`,'ok');
     }
@@ -2892,7 +3046,7 @@
       if(rows.length<k){setPHStatus(`São necessárias pelo menos ${k} amostras válidas com pH alvo.`,'warn');return;}
       if(features.length<1){setPHStatus('Selecione pelo menos uma feature.','warn');return;}
       const missing=features.filter(f=>rows.some(r=>phNum(r[f])==null)); if(missing.length){setPHStatus('Há valores ausentes nas features: '+missing.map(f=>PH_FEATURE_LABELS[f]).join(', ')+'. Se você importou S1P, desative S21 nas features ou use S2P.','warn');return;}
-      const opt={trees:parseInt(document.getElementById('ph-rf-trees').value)||100,depth:parseInt(document.getElementById('ph-rf-depth').value)||7,leaf:parseInt(document.getElementById('ph-rf-leaf').value)||2,C:phNum(document.getElementById('ph-svr-c').value)||10,eps:phNum(document.getElementById('ph-svr-eps').value)||0.05,gamma:phNum(document.getElementById('ph-svr-gamma').value)||0.15,seed:parseInt(document.getElementById('ph-seed').value)||42};
+      const opt={trees:parseInt(document.getElementById('ph-rf-trees').value)||100,depth:parseInt(document.getElementById('ph-rf-depth').value)||7,leaf:parseInt(document.getElementById('ph-rf-leaf').value)||2,C:phNum(document.getElementById('ph-svr-c').value)||100,eps:phNum(document.getElementById('ph-svr-eps').value)||0.05,gamma:phNum(document.getElementById('ph-svr-gamma').value)||0.1,seed:parseInt(document.getElementById('ph-seed').value)||42};
       setPHStatus(`Executando 5-fold: RFR + SVR em ${rows.length} amostras. Aguarde...`,'');
       const runButton=document.getElementById('ph-run-models-btn'); if(runButton)runButton.disabled=true;
       setTimeout(()=>{
@@ -3377,6 +3531,7 @@
       updateModelHints();
       renderPHFeatureList();
       renderPHTable();
+      if(typeof renderPHSourceList==='function') renderPHSourceList();
       setLanguage(currentLang || 'pt');
     }
     if (document.readyState === 'loading') {
