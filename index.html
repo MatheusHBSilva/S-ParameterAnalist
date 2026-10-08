@@ -612,6 +612,39 @@
     @media(max-width:900px){ .ph-guide{grid-template-columns:1fr 1fr;} .ph-data-grid{grid-template-columns:1fr 1fr;} }
     @media(max-width:600px){ .ph-guide{grid-template-columns:1fr;} }
     @media(max-width:900px){ .ph-data-grid{grid-template-columns:1fr 1fr;} }
+
+    .ph-modal-overlay {
+      display:none; position:fixed; inset:0; z-index:9999;
+      background:rgba(0,0,0,.65); align-items:center; justify-content:center;
+      padding:20px;
+    }
+    .ph-modal-overlay.open { display:flex; }
+    .ph-modal {
+      background:#171b26; border:1px solid var(--border); border-radius:16px;
+      max-width:720px; width:100%; max-height:90vh; overflow:auto;
+      padding:24px 28px; box-shadow:0 20px 60px rgba(0,0,0,.5);
+    }
+    .ph-modal h2 { color:#fff; font-size:20px; margin-bottom:8px; }
+    .ph-modal .ph-note { margin-bottom:14px; }
+    .ph-modal table { width:100%; border-collapse:collapse; font-size:13px; margin:12px 0 18px; }
+    .ph-modal th, .ph-modal td { border:1px solid var(--border); padding:8px 10px; text-align:left; }
+    .ph-modal th { background:#242d3d; color:var(--text-secondary); }
+    .ph-modal td { color:var(--text); }
+    .ph-modal-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; margin-top:18px; }
+    .ph-faq details {
+      background:#1e2533; border:1px solid var(--border); border-radius:10px;
+      padding:12px 16px; margin-bottom:10px;
+    }
+    .ph-faq summary {
+      cursor:pointer; color:#fff; font-weight:600; font-size:14px;
+    }
+    .ph-faq .faq-body { color:var(--text-secondary); font-size:13.5px; line-height:1.55; margin-top:10px; }
+    .ph-faq .faq-body code { color:var(--warning); }
+    .ph-source-chip {
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 12px; background:#1e2533; border:1px solid var(--border);
+      border-radius:10px; font-size:12.5px;
+    }
   </style>
 </head>
 <body>
@@ -622,7 +655,7 @@
       <p class="subtitle" data-i18n="appSubtitle" style="margin-bottom:0">S11/S21 + modelos de permissividade para solo</p>
     </div>
     <div class="app-header-right">
-      <span class="version-badge">v2.6.10</span>
+      <span class="version-badge">v2.6.13</span>
       <div class="lang-switch" title="Language / Idioma">
         <button type="button" class="lang-btn active" id="lang-pt" onclick="setLanguage('pt')">PT</button>
         <button type="button" class="lang-btn" id="lang-en" onclick="setLanguage('en')">EN</button>
@@ -771,6 +804,7 @@
     <div class="tab" id="btn-tab-moisture" onclick="setTab('moisture')" data-i18n="tabMoisture">Moisture % × ε'</div>
     <div class="tab" id="btn-tab-3d" onclick="setTab('3d')" data-i18n="tab3d">Ajuste de Superfície 3D</div>
     <div class="tab" id="btn-tab-ph" onclick="setTab('ph')" data-i18n="tabPH">Estudo de pH / ML</div>
+    <div class="tab" id="btn-tab-faq" onclick="setTab('faq')" data-i18n="tabFAQ">Dúvidas / FAQ</div>
     <div class="tab" id="btn-tab-updates" onclick="setTab('updates')" data-i18n="tabUpdates">Updates</div>
   </div>
 
@@ -962,9 +996,9 @@
       <div class="ph-actions" style="margin-top:15px">
         <button class="action-btn" onclick="downloadPHTemplate()">Baixar template CSV</button>
         <button class="action-btn ph-sample-btn" onclick="downloadPHSample()">Baixar arquivo de exemplo</button>
-        <button class="action-btn" onclick="document.getElementById('ph-file-in').click()">Importar CSV / Excel / XL (vários)</button>
-        <button class="action-btn" onclick="document.getElementById('ph-touchstone-in').click()">Importar S1P / S2P</button>
-        <button class="action-btn" onclick="loadPHFromViewer()">Usar S1P/S2P do Viewer</button>
+        <button class="action-btn" onclick="openPHFormatModal()" data-i18n="phImportExcel">Importar CSV / Excel / XL (vários)</button>
+        <button class="action-btn" onclick="document.getElementById('ph-touchstone-in').click()" data-i18n="phImportTouch">Importar S1P / S2P</button>
+        <button class="action-btn" onclick="loadPHFromViewer()" data-i18n="phUseViewer">Usar S1P/S2P do Viewer</button>
         <label style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#0b0e14;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12.5px;color:var(--text-secondary);">
           <input type="checkbox" id="ph-import-all-freq" style="width:15px;height:15px;accent-color:var(--accent);">
           Importar todos os pontos de frequência (não recomendado)
@@ -979,7 +1013,7 @@
     <div class="panel">
       <div class="control-row">
         <div><span class="sec-label">2. Dados das amostras</span><div class="ph-note">Primeiro informe a água da mistura e escolha o método de permissividade. O botão abaixo reaproveita <strong>exatamente os três métodos de ε′/ε″ já existentes no site</strong> e grava os resultados na planilha.</div></div>
-        <div class="ph-actions"><button class="action-btn" onclick="addPHRow()">+ Amostra</button><button class="action-btn" onclick="addPHRows(10)">+ 10 amostras</button><button class="action-btn" onclick="clearPHData()">Limpar dados</button><button class="action-btn" onclick="togglePHAdvancedTable()">Campos avançados</button></div>
+        <div class="ph-actions"><button class="action-btn" onclick="addPHRow()">+ Amostra</button><button class="action-btn" onclick="addPHRows(10)">+ 10 amostras</button><button class="action-btn" onclick="clearPHData()" data-i18n="phClearData">Limpar dados</button><button class="action-btn" onclick="togglePHAdvancedTable()">Campos avançados</button></div>
       </div>
 
       <div class="ph-calc-box">
@@ -1069,7 +1103,7 @@
     <div class="panel">
       <div class="control-row">
         <div><span class="sec-label">3. Executar análise</span><div class="ph-note">Depois de calcular ε′/ε″ na etapa 2, preencha profundidade e <strong>pH medido</strong> e execute RFR, SVR e 5-fold.</div></div>
-        <button id="ph-run-models-btn" class="action-btn ph-main-action" onclick="runPHModels()" disabled>Gerar RFR + SVR + 5-fold</button>
+        <button id="ph-run-models-btn" class="action-btn ph-main-action" onclick="runPHModels()" disabled data-i18n="phRunModels">Gerar RFR + SVR + 5-fold</button>
       </div>
       <div id="ph-status" class="ph-status">Aguardando dados experimentais.</div>
     </div>
@@ -1142,6 +1176,95 @@
       <div class="panel">
         <div class="ph-chart-title-row"><span class="sec-label">RFR × SVR — comparação das métricas</span><span class="ph-model-badge">RFR × SVR</span></div>
         <div class="chart-box"><canvas id="ph-compare-canvas"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="tab-faq" style="display:none">
+    <div class="panel ph-faq">
+      <div class="sec-label" data-i18n="faqTitle">Dúvidas sobre o módulo de pH</div>
+      <p class="ph-note" data-i18n="faqIntro">Esta página explica o fluxo completo, o formato dos arquivos e os erros mais comuns. Se algo falhar no módulo de pH, volte aqui.</p>
+
+      <details open>
+        <summary data-i18n="faqQ1">Como funciona o cálculo de pH neste sistema?</summary>
+        <div class="faq-body" id="faqA1">
+          <p>O fluxo segue o artigo: medições de micro-ondas (S11, S21, frequência) + dados físicos (profundidade, massa, umidade) → permissividade (ε′, ε″) → Machine Learning (RFR e SVR) para prever o <strong>pH medido em laboratório</strong>.</p>
+          <ol>
+            <li>Importe amostras (Excel do lab ou S1P/S2P).</li>
+            <li>O sistema calcula ε′/ε″ (Topp) a partir da umidade e da frequência.</li>
+            <li>O pH medido é o alvo do treino.</li>
+            <li>RFR e SVR fazem validação 5-fold e geram os gráficos.</li>
+          </ol>
+        </div>
+      </details>
+      <details>
+        <summary data-i18n="faqQ2">Qual o formato correto do arquivo Excel (.xlsx)?</summary>
+        <div class="faq-body" id="faqA2">
+          <p>Uma linha de cabeçalho e <strong>uma amostra por linha</strong>:</p>
+          <table>
+            <tr><th>Coluna</th><th>Exemplo</th><th>Obrigatório?</th></tr>
+            <tr><td>ID</td><td>S65</td><td>Não</td></tr>
+            <tr><td>S11 (dB)</td><td>-18.79</td><td>Sim</td></tr>
+            <tr><td>S21 (dB)</td><td>-1.67</td><td>Recomendado</td></tr>
+            <tr><td>Freq (GHz)</td><td>3.95</td><td>Sim</td></tr>
+            <tr><td>DEPTH (cm)</td><td>2.5</td><td>Sim</td></tr>
+            <tr><td>W(g)</td><td>50</td><td>Opcional</td></tr>
+            <tr><td>con%</td><td>0.8 ou 80</td><td>Sim</td></tr>
+            <tr><td>pH</td><td>6.0</td><td>Sim</td></tr>
+          </table>
+          <p>Linhas vazias e unidades (dB)/(GHz) são ignoradas. Vários arquivos somam na tabela.</p>
+        </div>
+      </details>
+      <details>
+        <summary data-i18n="faqQ3">Por que o gráfico colapsa ou o R² fica negativo?</summary>
+        <div class="faq-body" id="faqA3">
+          <p>Geralmente há centenas de pontos de frequência com o mesmo pH. O artigo usa ~98 amostras com pH entre ~5,0 e 6,5. Não use “Importar todos os pontos de frequência” no ML.</p>
+        </div>
+      </details>
+      <details>
+        <summary data-i18n="faqQ4">Erro: valores ausentes nas features (Profundidade)</summary>
+        <div class="faq-body" id="faqA4">
+          <p>Alguma linha não tem profundidade, ou a feature está marcada sem dado. Causas: mistura Excel+S1P, ou cabeçalho sem DEPTH. Solução: Limpar dados → importar só o Excel completo, ou desmarcar Profundidade em Avançado.</p>
+        </div>
+      </details>
+      <details>
+        <summary data-i18n="faqQ5">Não consigo remover um arquivo da lista</summary>
+        <div class="faq-body" id="faqA5">
+          <p>Use <strong>Remover</strong> no chip do arquivo ou <strong>Remover todos</strong>. O grupo “(manual / sem arquivo)” também pode ser removido de uma vez.</p>
+        </div>
+      </details>
+      <details>
+        <summary data-i18n="faqQ6">RFR vs SVR — o que esperar?</summary>
+        <div class="faq-body" id="faqA6">
+          <p>No artigo o <strong>RFR</strong> é o melhor (R² ≈ 0,95). O SVR costuma ficar abaixo — isso é esperado.</p>
+        </div>
+      </details>
+      <details>
+        <summary data-i18n="faqQ7">A umidade (con%) entra no cálculo?</summary>
+        <div class="faq-body" id="faqA7">
+          <p>Sim. <code>con%</code> 0,2–0,8 vira 20–80% e alimenta o Topp (ε′, ε″) por amostra. Também pode ser feature do ML.</p>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div class="ph-modal-overlay" id="ph-format-modal" onclick="if(event.target===this)closePHFormatModal()">
+    <div class="ph-modal" role="dialog" aria-modal="true">
+      <h2 data-i18n="fmtTitle">Formato do arquivo Excel / CSV</h2>
+      <p class="ph-note" data-i18n="fmtIntro">Planilha com cabeçalho e uma amostra por linha. Exemplo:</p>
+      <table>
+        <thead><tr><th>ID</th><th>S11</th><th>S21</th><th>Freq</th><th>DEPTH</th><th>W(g)</th><th>con%</th><th>pH</th></tr></thead>
+        <tbody>
+          <tr><td>S65</td><td>-27.02</td><td>-1.67</td><td>3.95</td><td>2.5</td><td>50</td><td>0.8</td><td>6.0</td></tr>
+          <tr><td>S73</td><td>-18.79</td><td>-68.19</td><td>3.92</td><td>2.1</td><td>50</td><td>0.6</td><td>5.0</td></tr>
+          <tr><td>S89</td><td>-16.84</td><td>-1.39</td><td>4.93</td><td>1.9</td><td>50</td><td>0.2</td><td>6.5</td></tr>
+        </tbody>
+      </table>
+      <p class="ph-note" data-i18n="fmtNotes"><strong>con%</strong>: fração (0.2–0.8) ou % (20–80). Linhas vazias e (dB)/(GHz) são ignoradas. Vários arquivos de uma vez são permitidos.</p>
+      <div class="ph-modal-actions">
+        <button type="button" class="action-btn" onclick="closePHFormatModal()" data-i18n="fmtCancel">Cancelar</button>
+        <button type="button" class="action-btn ph-main-action" onclick="confirmPHFilePick()" data-i18n="fmtContinue">Entendi — escolher arquivo(s)</button>
       </div>
     </div>
   </div>
@@ -1243,6 +1366,29 @@
         phFormulaTitle: 'Fórmulas e parâmetros do artigo',
         phChartOpts: 'Personalização dos gráficos de pH',
         tabUpdates: 'Updates',
+        tabFAQ: 'Dúvidas / FAQ',
+        faqTitle: 'Dúvidas sobre o módulo de pH',
+        faqIntro: 'Esta página explica o fluxo completo, o formato dos arquivos e os erros mais comuns. Se algo falhar no módulo de pH, volte aqui.',
+        faqQ1: 'Como funciona o cálculo de pH neste sistema?',
+        faqQ2: 'Qual o formato correto do arquivo Excel (.xlsx)?',
+        faqQ3: 'Por que o gráfico colapsa ou o R² fica negativo?',
+        faqQ4: 'Erro: valores ausentes nas features (Profundidade)',
+        faqQ5: 'Não consigo remover um arquivo da lista',
+        faqQ6: 'RFR vs SVR — o que esperar?',
+        faqQ7: 'A umidade (con%) entra no cálculo?',
+        fmtTitle: 'Formato do arquivo Excel / CSV',
+        fmtIntro: 'Planilha com cabeçalho e uma amostra por linha. Exemplo:',
+        fmtNotes: 'con%: fração (0.2–0.8) ou % (20–80). Linhas vazias e (dB)/(GHz) são ignoradas. Vários arquivos de uma vez são permitidos.',
+        fmtCancel: 'Cancelar',
+        fmtContinue: 'Entendi — escolher arquivo(s)',
+        phImportExcel: 'Importar CSV / Excel / XL (vários)',
+        phImportTouch: 'Importar S1P / S2P',
+        phUseViewer: 'Usar S1P/S2P do Viewer',
+        phImportAllFreq: 'Importar todos os pontos de frequência (não recomendado)',
+        phRunModels: 'Gerar RFR + SVR + 5-fold',
+        phClearData: 'Limpar dados',
+        phTitle: 'Estudo de pH por Microwave Sensor + Machine Learning',
+
         optXTitle: 'Título eixo X',
         optYTitle: 'Título eixo Y',
         optTitleSize: 'Tamanho título eixos',
@@ -1296,6 +1442,29 @@
         phFormulaTitle: 'Paper formulas and parameters',
         phChartOpts: 'pH chart customization',
         tabUpdates: 'Updates',
+        tabFAQ: 'FAQ / Help',
+        faqTitle: 'FAQ — pH module',
+        faqIntro: 'This page explains the full workflow, file format and common errors. If something fails in the pH module, come back here.',
+        faqQ1: 'How does pH calculation work in this system?',
+        faqQ2: 'What is the correct Excel (.xlsx) format?',
+        faqQ3: 'Why does the chart collapse or R² go negative?',
+        faqQ4: 'Error: missing values in features (Depth)',
+        faqQ5: 'I cannot remove a file from the list',
+        faqQ6: 'RFR vs SVR — what to expect?',
+        faqQ7: 'Is water content (con%) used in the calculation?',
+        fmtTitle: 'Excel / CSV file format',
+        fmtIntro: 'Spreadsheet with a header row and one sample per line. Example:',
+        fmtNotes: 'con%: fraction (0.2–0.8) or percent (20–80). Blank rows and (dB)/(GHz) are ignored. Multiple files at once are allowed.',
+        fmtCancel: 'Cancel',
+        fmtContinue: 'Got it — choose file(s)',
+        phImportExcel: 'Import CSV / Excel / XL (multiple)',
+        phImportTouch: 'Import S1P / S2P',
+        phUseViewer: 'Use S1P/S2P from Viewer',
+        phImportAllFreq: 'Import all frequency points (not recommended)',
+        phRunModels: 'Run RFR + SVR + 5-fold',
+        phClearData: 'Clear data',
+        phTitle: 'Soil pH study with Microwave Sensor + Machine Learning',
+
         optXTitle: 'X-axis title',
         optYTitle: 'Y-axis title',
         optTitleSize: 'Axis title size',
@@ -1347,9 +1516,60 @@
       document.documentElement.lang = currentLang === 'pt' ? 'pt-BR' : 'en';
       document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
-        if (key && I18N[currentLang][key] != null) el.textContent = I18N[currentLang][key];
+        if (key && I18N[currentLang] && I18N[currentLang][key] != null) el.textContent = I18N[currentLang][key];
       });
       applyChartOptions();
+      if (typeof applyPHLanguage === 'function') applyPHLanguage();
+      if (typeof renderPHSourceList === 'function') renderPHSourceList();
+    }
+    function applyPHLanguage(){
+      // FAQ answer bodies (HTML)
+      const faqBodies = {
+        faqA1: {
+          pt: '<p>O fluxo segue o artigo: medições de micro-ondas (S11, S21, frequência) + dados físicos (profundidade, massa, umidade) → permissividade (ε′, ε″) → Machine Learning (RFR e SVR) para prever o <strong>pH medido em laboratório</strong>.</p><ol><li>Importe amostras (Excel do lab ou S1P/S2P).</li><li>O sistema calcula ε′/ε″ (Topp) a partir da umidade e da frequência.</li><li>O pH medido é o alvo do treino.</li><li>RFR e SVR fazem validação 5-fold e geram os gráficos.</li></ol>',
+          en: '<p>Workflow follows the paper: microwave measurements (S11, S21, frequency) + physical data (depth, mass, moisture) → permittivity (ε′, ε″) → Machine Learning (RFR & SVR) to predict <strong>lab-measured soil pH</strong>.</p><ol><li>Import samples (lab Excel or S1P/S2P).</li><li>The system computes ε′/ε″ (Topp) from moisture and frequency.</li><li>Measured pH is the training target.</li><li>RFR and SVR run 5-fold validation and plot parity charts.</li></ol>'
+        },
+        faqA2: {
+          pt: '<p>Uma linha de cabeçalho e <strong>uma amostra por linha</strong>:</p><table><tr><th>Coluna</th><th>Exemplo</th><th>Obrigatório?</th></tr><tr><td>ID</td><td>S65</td><td>Não</td></tr><tr><td>S11 (dB)</td><td>-18.79</td><td>Sim</td></tr><tr><td>S21 (dB)</td><td>-1.67</td><td>Recomendado</td></tr><tr><td>Freq (GHz)</td><td>3.95</td><td>Sim</td></tr><tr><td>DEPTH (cm)</td><td>2.5</td><td>Sim</td></tr><tr><td>W(g)</td><td>50</td><td>Opcional</td></tr><tr><td>con%</td><td>0.8 ou 80</td><td>Sim</td></tr><tr><td>pH</td><td>6.0</td><td>Sim</td></tr></table><p>Linhas vazias e unidades (dB)/(GHz) são ignoradas. Vários arquivos somam na tabela.</p>',
+          en: '<p>One header row and <strong>one sample per data row</strong>:</p><table><tr><th>Column</th><th>Example</th><th>Required?</th></tr><tr><td>ID</td><td>S65</td><td>No</td></tr><tr><td>S11 (dB)</td><td>-18.79</td><td>Yes</td></tr><tr><td>S21 (dB)</td><td>-1.67</td><td>Recommended</td></tr><tr><td>Freq (GHz)</td><td>3.95</td><td>Yes</td></tr><tr><td>DEPTH (cm)</td><td>2.5</td><td>Yes</td></tr><tr><td>W(g)</td><td>50</td><td>Optional</td></tr><tr><td>con%</td><td>0.8 or 80</td><td>Yes</td></tr><tr><td>pH</td><td>6.0</td><td>Yes</td></tr></table><p>Blank rows and unit rows (dB)/(GHz) are ignored. Multiple files append to the table.</p>'
+        },
+        faqA3: {
+          pt: '<p>Geralmente há centenas de pontos de frequência com o mesmo pH. O artigo usa ~98 amostras com pH entre ~5,0 e 6,5. Não use “Importar todos os pontos de frequência” no ML.</p>',
+          en: '<p>Usually hundreds of frequency points share the same pH. The paper uses ~98 distinct samples with pH ~5.0–6.5. Do not enable “Import all frequency points” for ML.</p>'
+        },
+        faqA4: {
+          pt: '<p>Alguma linha não tem profundidade, ou a feature está marcada sem dado. Causas: mistura Excel+S1P, ou cabeçalho sem DEPTH. Solução: Limpar dados → importar só o Excel completo, ou desmarcar Profundidade em Avançado.</p>',
+          en: '<p>Some row lacks depth, or the Depth feature is checked without data. Causes: mixing Excel + S1P, or header without DEPTH. Fix: Clear data → import only the full Excel, or uncheck Depth under Advanced.</p>'
+        },
+        faqA5: {
+          pt: '<p>Use <strong>Remover</strong> no chip do arquivo ou <strong>Remover todos</strong>. O grupo “(manual / sem arquivo)” também pode ser removido de uma vez.</p>',
+          en: '<p>Use <strong>Remove</strong> on the file chip or <strong>Remove all</strong>. The “(manual / no file)” group can also be removed in one click.</p>'
+        },
+        faqA6: {
+          pt: '<p>No artigo o <strong>RFR</strong> é o melhor (R² ≈ 0,95). O SVR costuma ficar abaixo — isso é esperado.</p>',
+          en: '<p>In the paper <strong>RFR</strong> is best (R² ≈ 0.95). SVR is usually lower — that is expected.</p>'
+        },
+        faqA7: {
+          pt: '<p>Sim. <code>con%</code> 0,2–0,8 vira 20–80% e alimenta o Topp (ε′, ε″) por amostra. Também pode ser feature do ML.</p>',
+          en: '<p>Yes. <code>con%</code> 0.2–0.8 becomes 20–80% and drives Topp (ε′, ε″) per sample. It can also be an ML feature.</p>'
+        }
+      };
+      const lang = currentLang === 'en' ? 'en' : 'pt';
+      Object.keys(faqBodies).forEach(id => {
+        const el = document.getElementById(id);
+        if (el && faqBodies[id][lang]) el.innerHTML = faqBodies[id][lang];
+      });
+      // checkbox label for all-freq
+      const lab = document.querySelector('label[for="ph-import-all-freq"], label:has(#ph-import-all-freq)');
+      // fallback: find label containing the checkbox
+      document.querySelectorAll('label').forEach(l => {
+        if (l.querySelector('#ph-import-all-freq')) {
+          const cb = l.querySelector('#ph-import-all-freq');
+          l.innerHTML = '';
+          l.appendChild(cb);
+          l.appendChild(document.createTextNode(' ' + (lang==='en' ? 'Import all frequency points (not recommended)' : 'Importar todos os pontos de frequência (não recomendado)')));
+        }
+      });
     }
 
     function toggleCollapse(id) {
@@ -1404,6 +1624,7 @@
       document.getElementById('tab-moisture').style.display = t === 'moisture' ? 'block' : 'none';
       document.getElementById('tab-3d').style.display = t === '3d' ? 'block' : 'none';
       document.getElementById('tab-ph').style.display = t === 'ph' ? 'block' : 'none';
+      const faqEl=document.getElementById('tab-faq'); if(faqEl) faqEl.style.display = t === 'faq' ? 'block' : 'none';
       document.getElementById('tab-updates').style.display = t === 'updates' ? 'block' : 'none';
       
       document.getElementById('btn-tab-viewer').classList.toggle('active', t === 'viewer');
@@ -1411,6 +1632,7 @@
       document.getElementById('btn-tab-moisture').classList.toggle('active', t === 'moisture');
       document.getElementById('btn-tab-3d').classList.toggle('active', t === '3d');
       document.getElementById('btn-tab-ph').classList.toggle('active', t === 'ph');
+      const btnFaq=document.getElementById('btn-tab-faq'); if(btnFaq) btnFaq.classList.toggle('active', t === 'faq');
       document.getElementById('btn-tab-updates').classList.toggle('active', t === 'updates');
       
       if (t === 'average') renderAvgSelectors();
@@ -2363,35 +2585,83 @@
       phResults=null; clearPHCharts();
       renderPHTable(); renderPHSourceList();
     }
-    function removePHBySource(source){
-      const before=phRows.length;
-      phRows=phRows.filter(r=>(r._sourceFile||'')!==source);
-      phRows.forEach((r,idx)=>r.id=idx+1);
-      phResults=null; clearPHCharts();
-      phPermittivityReady=phRows.some(r=>phNum(r.epsReal)!=null);
-      const btn=document.getElementById('ph-run-models-btn');
-      if(btn) btn.disabled=!(phPermittivityReady && phRows.some(r=>phNum(r.pH)!=null));
-      renderPHTable(); renderPHSourceList();
-      setPHStatus(`Removido “${source}” (${before-phRows.length} linha(s)). Restam ${phRows.length} amostra(s).`,'ok');
+    function phSourceKey(r){
+      const s = (r && r._sourceFile != null) ? String(r._sourceFile).trim() : '';
+      return s || '__manual__';
+    }
+    function phSourceLabel(key){
+      if (key === '__manual__') return (typeof currentLang !== 'undefined' && currentLang === 'en') ? '(manual / no file)' : '(manual / sem arquivo)';
+      return key;
+    }
+    function removePHBySource(sourceKey){
+      const key = (sourceKey == null || sourceKey === '') ? '__manual__' : String(sourceKey);
+      const label = phSourceLabel(key);
+      const n = phRows.filter(r => phSourceKey(r) === key).length;
+      const en = (typeof currentLang !== 'undefined' && currentLang === 'en');
+      const msg = en
+        ? `Remove "${label}" and its ${n} sample(s)? This cannot be undone.`
+        : `Remover "${label}" e suas ${n} amostra(s)? Esta ação não pode ser desfeita.`;
+      if (!window.confirm(msg)) return;
+      const before = phRows.length;
+      phRows = phRows.filter(r => phSourceKey(r) !== key);
+      phRows.forEach((r, idx) => { r.id = idx + 1; });
+      phResults = null;
+      clearPHCharts();
+      phPermittivityReady = phRows.some(r => phNum(r.epsReal) != null);
+      const btn = document.getElementById('ph-run-models-btn');
+      if (btn) btn.disabled = !(phPermittivityReady && phRows.some(r => phNum(r.pH) != null));
+      renderPHTable();
+      renderPHSourceList();
+      const removed = before - phRows.length;
+      setPHStatus(
+        (typeof currentLang !== 'undefined' && currentLang === 'en')
+          ? `Removed "${label}" (${removed} row(s)). ${phRows.length} sample(s) left.`
+          : `Removido "${label}" (${removed} linha(s)). Restam ${phRows.length} amostra(s).`,
+        removed ? 'ok' : 'warn'
+      );
     }
     function renderPHSourceList(){
-      const el=document.getElementById('ph-source-list');
-      if(!el) return;
-      const counts={};
-      phRows.forEach(r=>{
-        const s=r._sourceFile||'(manual / sem arquivo)';
-        counts[s]=(counts[s]||0)+1;
+      const el = document.getElementById('ph-source-list');
+      if (!el) return;
+      const counts = {};
+      phRows.forEach(r => {
+        const k = phSourceKey(r);
+        counts[k] = (counts[k] || 0) + 1;
       });
-      const keys=Object.keys(counts);
-      if(!keys.length){ el.innerHTML=''; return; }
-      el.innerHTML=keys.map(s=>{
-        const safe=String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-        const jsSafe=String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        return `<div style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#1e2533;border:1px solid var(--border);border-radius:10px;font-size:12.5px;">
-          <span style="color:#e2e8f0;">📄 <strong>${safe}</strong> <span style="color:var(--text-secondary);">(${counts[s]} amostra${counts[s]>1?'s':''})</span></span>
-          <button class="btn-remove" style="margin-left:0;padding:4px 10px;font-size:12px;" onclick="removePHBySource('${jsSafe}')" title="Remover este arquivo">Remover</button>
+      const keys = Object.keys(counts);
+      if (!keys.length) { el.innerHTML = ''; return; }
+      const en = (typeof currentLang !== 'undefined' && currentLang === 'en');
+      const rmLabel = en ? 'Remove' : 'Remover';
+      const allLabel = en ? 'Remove all' : 'Remover todos';
+      const sampleWord = (n) => en ? (n === 1 ? 'sample' : 'samples') : (n === 1 ? 'amostra' : 'amostras');
+      el.innerHTML = keys.map(k => {
+        const label = phSourceLabel(k);
+        const safe = String(label).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+        const keyAttr = String(k).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+        return `<div class="ph-source-chip">
+          <span style="color:#e2e8f0;">📄 <strong>${safe}</strong>
+            <span style="color:var(--text-secondary);">(${counts[k]} ${sampleWord(counts[k])})</span>
+          </span>
+          <button type="button" class="btn-remove" style="margin-left:0;padding:4px 10px;font-size:12px;"
+            data-ph-source="${keyAttr}"
+            onclick="removePHBySource(this.getAttribute('data-ph-source'))">${rmLabel}</button>
         </div>`;
-      }).join('') + (keys.length>1?`<button class="action-btn" style="border-color:var(--danger);color:var(--danger);" onclick="clearPHData()">Remover todos</button>`:'');
+      }).join('') +
+      `<button type="button" class="action-btn" style="border-color:var(--danger);color:var(--danger);" onclick="clearPHData()">${allLabel}</button>`;
+    }
+    function openPHFormatModal(){
+      const m = document.getElementById('ph-format-modal');
+      if (m) m.classList.add('open');
+      if (typeof applyPHLanguage === 'function') applyPHLanguage();
+    }
+    function closePHFormatModal(){
+      const m = document.getElementById('ph-format-modal');
+      if (m) m.classList.remove('open');
+    }
+    function confirmPHFilePick(){
+      closePHFormatModal();
+      const inp = document.getElementById('ph-file-in');
+      if (inp) { inp.value = ''; inp.click(); }
     }
     function clearPHData(){
       phRows=[];phResults=null;phPermittivityReady=false;phEmpiricalPHReady=false;
@@ -2617,6 +2887,69 @@
       });
       return {rows:out, aggregated:true, groups:out.length, original:mapped.length};
     }
+    
+    function showPHImportReport(nFiles, totalAdded, summaries, errors){
+      const en = (typeof currentLang !== 'undefined' && currentLang === 'en');
+      let box = document.getElementById('ph-import-report');
+      if (!box) {
+        box = document.createElement('div');
+        box.id = 'ph-import-report';
+        const anchor = document.getElementById('ph-source-list');
+        if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(box, anchor.nextSibling);
+        else {
+          const st = document.getElementById('ph-status');
+          if (st && st.parentNode) st.parentNode.insertBefore(box, st);
+        }
+      }
+      const ok = totalAdded > 0 && !errors.length;
+      const partial = totalAdded > 0 && errors.length > 0;
+      const fail = totalAdded === 0 && errors.length > 0;
+      let border = ok ? 'rgba(16,185,129,.5)' : (partial ? 'rgba(250,204,21,.55)' : 'rgba(239,68,68,.55)');
+      let bg = ok ? 'rgba(16,185,129,.08)' : (partial ? 'rgba(250,204,21,.08)' : 'rgba(239,68,68,.10)');
+      let title = ok
+        ? (en ? 'Import completed' : 'Importação concluída')
+        : (partial
+            ? (en ? 'Import partially completed' : 'Importação parcial')
+            : (en ? 'Import failed' : 'Importação falhou'));
+      let html = `<div style="margin:12px 0;padding:14px 16px;border:1px solid ${border};background:${bg};border-radius:12px;font-size:13.5px;line-height:1.5;">`;
+      html += `<div style="font-weight:700;color:#fff;margin-bottom:8px;font-size:15px;">${title}</div>`;
+      html += `<div style="color:var(--text-secondary);margin-bottom:6px;">${en
+        ? `${nFiles} file(s) selected · <strong style="color:#a7f3d0">+${totalAdded} sample(s) added</strong> · total in table: <strong style="color:#fff">${phRows.length}</strong>`
+        : `${nFiles} arquivo(s) selecionado(s) · <strong style="color:#a7f3d0">+${totalAdded} amostra(s) adicionada(s)</strong> · total na tabela: <strong style="color:#fff">${phRows.length}</strong>`}</div>`;
+      if (summaries.length) {
+        html += `<div style="margin-top:8px;color:#a7f3d0;"><strong>${en?'Accepted:':'Aceitos:'}</strong><ul style="margin:6px 0 0 18px;">`;
+        summaries.forEach(s => { html += `<li style="margin-bottom:4px;">${s}</li>`; });
+        html += `</ul></div>`;
+      }
+      if (errors.length) {
+        html += `<div style="margin-top:10px;color:#fecaca;"><strong>${en?'Rejected / not imported:':'Recusados / não importados:'}</strong><ul style="margin:6px 0 0 18px;">`;
+        errors.forEach(e => {
+          // e is "filename: reason"
+          const colon = e.indexOf(':');
+          const fname = colon >= 0 ? e.slice(0, colon).trim() : e;
+          const reason = colon >= 0 ? e.slice(colon + 1).trim() : '';
+          html += `<li style="margin-bottom:8px;"><strong style="color:#fff;">📄 ${fname}</strong><br><span style="color:#fecaca;">${reason || (en?'Unknown error':'Erro desconhecido')}</span></li>`;
+        });
+        html += `</ul></div>`;
+        html += `<div style="margin-top:10px;color:var(--text-secondary);font-size:12.5px;">${en
+          ? 'Tip: open <strong>Import CSV / Excel</strong> again to see the required format, or check the <strong>FAQ</strong> tab.'
+          : 'Dica: abra de novo <strong>Importar CSV / Excel</strong> para ver o formato exigido, ou consulte a aba <strong>Dúvidas / FAQ</strong>.'}</div>`;
+      }
+      html += `</div>`;
+      box.innerHTML = html;
+
+      let short = en
+        ? `Import: +${totalAdded} sample(s) from ${nFiles} file(s). Total: ${phRows.length}.`
+        : `Importação: +${totalAdded} amostra(s) de ${nFiles} arquivo(s). Total: ${phRows.length}.`;
+      if (errors.length) short += en ? ` ${errors.length} file(s) rejected — see details above.` : ` ${errors.length} arquivo(s) recusado(s) — veja detalhes acima.`;
+      setPHStatus(short, fail ? 'err' : (partial ? 'warn' : 'ok'));
+      const pe = document.getElementById('ph-perm-status');
+      if (pe) {
+        pe.className = 'ph-status ' + (fail ? 'err' : (partial ? 'warn' : 'ok'));
+        pe.textContent = short;
+      }
+    }
+
     function handlePHFile(files){
       if(!files || !files.length) return;
       const fileList = Array.from(files);
@@ -2628,10 +2961,30 @@
       const processOne = (f, arrayBufferOrText) => {
         const name = (f.name || '').toLowerCase();
         const isCsv = name.endsWith('.csv');
-        const wb = XLSX.read(arrayBufferOrText, { type: isCsv ? 'string' : 'array', cellDates: true });
+        let wb, matrix;
+        try {
+          wb = XLSX.read(arrayBufferOrText, { type: isCsv ? 'string' : 'array', cellDates: true });
+        } catch (readErr) {
+          throw new Error(
+            (typeof currentLang!=='undefined' && currentLang==='en')
+              ? ('Could not read spreadsheet (corrupt file or unsupported format): ' + (readErr.message||readErr))
+              : ('Não foi possível ler a planilha (arquivo corrompido ou formato não suportado): ' + (readErr.message||readErr))
+          );
+        }
+        if (!wb.SheetNames || !wb.SheetNames.length) {
+          throw new Error(
+            (typeof currentLang!=='undefined' && currentLang==='en')
+              ? 'No sheets found in the workbook.'
+              : 'Nenhuma aba encontrada no arquivo.'
+          );
+        }
         const sh = wb.Sheets[wb.SheetNames[0]];
-        const matrix = XLSX.utils.sheet_to_json(sh, { header: 1, defval: '' });
-        if (!matrix.length) throw new Error('sem linhas');
+        matrix = XLSX.utils.sheet_to_json(sh, { header: 1, defval: '' });
+        if (!matrix.length) throw new Error(
+          (typeof currentLang!=='undefined' && currentLang==='en')
+            ? 'Empty file — no rows found.'
+            : 'Arquivo vazio — nenhuma linha encontrada.'
+        );
 
         const norm = (v) => String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
         let headerRow = -1;
@@ -2698,7 +3051,21 @@
             _sourceFile: f.name || 'arquivo'
           });
         }
-        if (!mapped.length) throw new Error('nenhuma linha de dados');
+        if (!mapped.length) {
+          const en = (typeof currentLang!=='undefined' && currentLang==='en');
+          const found = headers.filter(Boolean).slice(0,12).join(', ') || (en?'(none)':'(nenhum)');
+          const need = [];
+          if (cS11 < 0) need.push('S11');
+          if (cFreq < 0) need.push(en ? 'Freq (GHz)' : 'Freq (GHz)');
+          if (cPH < 0) need.push('pH');
+          if (cDepth < 0) need.push(en ? 'DEPTH' : 'DEPTH/profundidade');
+          if (cMoist < 0) need.push('con%/umidade');
+          throw new Error(
+            en
+              ? ('Invalid format. Expected columns like S11, S21, Freq, DEPTH, W(g), con%, pH. Found headers: [' + found + ']. Missing or unrecognized: ' + (need.length ? need.join(', ') : 'no usable data rows with S11 or pH') + '.')
+              : ('Formato inválido. Esperado colunas como S11, S21, Freq, DEPTH, W(g), con%, pH. Cabeçalhos encontrados: [' + found + ']. Ausentes ou não reconhecidos: ' + (need.length ? need.join(', ') : 'nenhuma linha útil com S11 ou pH') + '.')
+          );
+        }
 
         const uniquePH = new Set(mapped.map(r => String(r.pH))).size;
         const uniqueS11 = new Set(mapped.map(r => String(r.s11))).size;
@@ -2785,13 +3152,7 @@
               });
               renderPHTable();
               renderPHSourceList();
-              let msg = `Importados ${fileList.length} arquivo(s): +${totalAdded} amostra(s). Total na tabela: ${phRows.length}.`;
-              if (summaries.length) msg += ' [' + summaries.join('; ') + ']';
-              if (errors.length) msg += ' Erros: ' + errors.join(' | ');
-              if (phPermittivityReady && hasPH) msg += ' Pronto para RFR/SVR.';
-              setPHStatus(msg, errors.length && !totalAdded ? 'err' : 'ok');
-              const pe = document.getElementById('ph-perm-status');
-              if (pe) { pe.className = 'ph-status ok'; pe.textContent = msg; }
+              showPHImportReport(fileList.length, totalAdded, summaries, errors);
             }
           }
         };
@@ -3045,7 +3406,7 @@
       const features=phGetFeatures(); const k=Math.max(2,Math.min(10,parseInt(document.getElementById('ph-folds').value)||5));
       if(rows.length<k){setPHStatus(`São necessárias pelo menos ${k} amostras válidas com pH alvo.`,'warn');return;}
       if(features.length<1){setPHStatus('Selecione pelo menos uma feature.','warn');return;}
-      const missing=features.filter(f=>rows.some(r=>phNum(r[f])==null)); if(missing.length){setPHStatus('Há valores ausentes nas features: '+missing.map(f=>PH_FEATURE_LABELS[f]).join(', ')+'. Se você importou S1P, desative S21 nas features ou use S2P.','warn');return;}
+      const missing=features.filter(f=>rows.some(r=>phNum(r[f])==null)); if(missing.length){setPHStatus((currentLang==='en'?('Missing feature values: '+missing.map(f=>PH_FEATURE_LABELS[f]||f).join(', ')+'. See the FAQ tab for help.'):('Há valores ausentes nas features: '+missing.map(f=>PH_FEATURE_LABELS[f]||f).join(', ')+'. Veja a aba Dúvidas / FAQ.')),'warn');return;}
       const opt={trees:parseInt(document.getElementById('ph-rf-trees').value)||100,depth:parseInt(document.getElementById('ph-rf-depth').value)||7,leaf:parseInt(document.getElementById('ph-rf-leaf').value)||2,C:phNum(document.getElementById('ph-svr-c').value)||100,eps:phNum(document.getElementById('ph-svr-eps').value)||0.05,gamma:phNum(document.getElementById('ph-svr-gamma').value)||0.1,seed:parseInt(document.getElementById('ph-seed').value)||42};
       setPHStatus(`Executando 5-fold: RFR + SVR em ${rows.length} amostras. Aguarde...`,'');
       const runButton=document.getElementById('ph-run-models-btn'); if(runButton)runButton.disabled=true;
